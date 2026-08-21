@@ -11,6 +11,7 @@ export * from './lib/versioning/fingerprint';
 
 // Validation & dependency-graph logic
 export * from './lib/validation/validate-definition';
+export * from './lib/validation/dependency-depth';
 
 // Draft merge
 export * from './lib/draft/merge-draft';

@@ -1,0 +1,273 @@
+@if (field(); as f) {
+  <div class="flex h-full flex-col" data-testid="property-panel">
+    <!-- header -->
+    <div class="flex items-center gap-2 border-b border-surface-200 px-3 py-2.5 dark:border-surface-700">
+      <i [class]="meta()?.icon || 'pi pi-question'" class="text-primary-500"></i>
+      <div class="min-w-0 flex-1">
+        <div class="truncate text-sm font-semibold">{{ meta()?.label }}</div>
+        <div class="truncate text-[11px] text-surface-400">{{ f.id }}</div>
+      </div>
+      <p-button
+        icon="pi pi-times"
+        variant="text"
+        size="small"
+        severity="secondary"
+        (onClick)="store.select(null)"
+      />
+    </div>
+
+    <!-- tab switch -->
+    <div class="flex gap-1 border-b border-surface-200 px-3 pt-2 dark:border-surface-700">
+      <button
+        type="button"
+        class="rounded-t-md border-b-2 px-3 py-1.5 text-sm transition-colors"
+        [class]="
+          tab() === 'properties'
+            ? 'border-primary-500 font-medium text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+        "
+        data-testid="tab-properties"
+        (click)="tab.set('properties')"
+      >
+        Properties
+      </button>
+      <button
+        type="button"
+        class="rounded-t-md border-b-2 px-3 py-1.5 text-sm transition-colors"
+        [class]="
+          tab() === 'rules'
+            ? 'border-primary-500 font-medium text-primary-600 dark:text-primary-400'
+            : 'border-transparent text-surface-500 hover:text-surface-700 dark:hover:text-surface-300'
+        "
+        data-testid="tab-rules"
+        (click)="tab.set('rules')"
+      >
+        Rules
+      </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-3">
+      @if (tab() === 'properties') {
+        <div class="flex flex-col gap-3">
+          <!-- label -->
+          <label class="block text-xs font-medium text-surface-500">Label</label>
+          <input
+            pInputText
+            [ngModel]="f.label"
+            (ngModelChange)="update({ label: $event })"
+            [attr.data-testid]="'prop-label-' + f.id"
+            class="w-full"
+            size="small"
+          />
+
+          @switch (f.type) {
+            @case ('section') {
+              <label class="block text-xs font-medium text-surface-500">Subtitle</label>
+              <input
+                pInputText
+                [ngModel]="f.helpText"
+                (ngModelChange)="update({ helpText: $event })"
+                class="w-full"
+                size="small"
+              />
+            }
+            @default {
+              <!-- placeholder -->
+              @if (!['checkbox', 'checkbox-group', 'radio', 'rating', 'slider'].includes(f.type)) {
+                <label class="block text-xs font-medium text-surface-500">Placeholder</label>
+                <input
+                  pInputText
+                  [ngModel]="f.placeholder"
+                  (ngModelChange)="update({ placeholder: $event })"
+                  class="w-full"
+                  size="small"
+                />
+              }
+
+              <!-- help -->
+              <label class="block text-xs font-medium text-surface-500">Help text</label>
+              <textarea
+                pTextarea
+                [ngModel]="f.helpText"
+                (ngModelChange)="update({ helpText: $event })"
+                class="w-full"
+                [rows]="2"
+              ></textarea>
+
+              <!-- flags -->
+              @if (f.type !== 'hidden') {
+                <label class="flex items-center gap-2 text-sm">
+                  <p-checkbox
+                    binary
+                    [ngModel]="f.required"
+                    (ngModelChange)="update({ required: $event })"
+                    [attr.data-testid]="'prop-required-' + f.id"
+                  />
+                  Required
+                </label>
+              }
+              <label class="flex items-center gap-2 text-sm">
+                <p-checkbox
+                  binary
+                  [ngModel]="f.disabled"
+                  (ngModelChange)="update({ disabled: $event })"
+                />
+                  Disabled (read-only answer)
+                </label>
+
+              <!-- width -->
+              <label class="block text-xs font-medium text-surface-500">Width</label>
+              <p-select
+                [options]="columnChoices"
+                optionLabel="label"
+                optionValue="value"
+                [ngModel]="f.columns ?? 12"
+                (ngModelChange)="update({ columns: $event })"
+                class="w-full"
+                size="small"
+              />
+
+              <!-- default value for checkbox -->
+              @if (f.type === 'checkbox') {
+                <label class="flex items-center gap-2 text-sm">
+                  <p-checkbox
+                    binary
+                    [ngModel]="f.defaultValue === true"
+                    (ngModelChange)="update({ defaultValue: $event })"
+                  />
+                  Checked by default
+                </label>
+              }
+
+              <!-- options editor -->
+              @if (supportsOptions()) {
+                <div class="mt-1">
+                  <div class="mb-1 flex items-center justify-between">
+                    <span class="text-xs font-medium text-surface-500">Options</span>
+                    <p-button
+                      label="Add"
+                      icon="pi pi-plus"
+                      variant="text"
+                      size="small"
+                      [attr.data-testid]="'add-option-' + f.id"
+                      (onClick)="addOption()"
+                    />
+                  </div>
+                  <div class="flex flex-col gap-1.5">
+                    @for (option of f.options ?? []; track $index) {
+                      <div class="flex items-center gap-1.5">
+                        <input
+                          pInputText
+                          [ngModel]="option.label"
+                          (ngModelChange)="updateOptionLabel($index, $event)"
+                          placeholder="Label"
+                          class="w-full"
+                          size="small"
+                        />
+                        <input
+                          pInputText
+                          [ngModel]="'' + option.value"
+                          (ngModelChange)="updateOptionValue($index, $event)"
+                          placeholder="Value"
+                          class="w-full"
+                          size="small"
+                        />
+                        <p-button
+                          icon="pi pi-times"
+                          variant="text"
+                          size="small"
+                          severity="danger"
+                          (onClick)="removeOption($index)"
+                        />
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <!-- numeric constraints -->
+              @if (isNumeric()) {
+                <div class="grid grid-cols-3 gap-2">
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-surface-500">Min</label>
+                    <p-inputnumber
+                      [ngModel]="f.min"
+                      (ngModelChange)="update({ min: $event ?? undefined })"
+                      class="w-full"
+                      size="small"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-surface-500">Max</label>
+                    <p-inputnumber
+                      [ngModel]="f.max"
+                      (ngModelChange)="update({ max: $event ?? undefined })"
+                      class="w-full"
+                      size="small"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-surface-500">Step</label>
+                    <p-inputnumber
+                      [ngModel]="f.step"
+                      (ngModelChange)="update({ step: $event ?? undefined })"
+                      class="w-full"
+                      size="small"
+                    />
+                  </div>
+                </div>
+              }
+
+              <!-- text constraints -->
+              @if (isTextual()) {
+                <div>
+                  <label class="mb-1 block text-xs font-medium text-surface-500">Max length</label>
+                  <p-inputnumber
+                    [ngModel]="f.maxLength"
+                    (ngModelChange)="update({ maxLength: $event ?? undefined })"
+                    class="w-full"
+                    size="small"
+                  />
+                </div>
+                @if (f.type === 'text') {
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-surface-500">
+                      Regex pattern
+                    </label>
+                    <input
+                      pInputText
+                      [ngModel]="f.pattern"
+                      (ngModelChange)="update({ pattern: $event })"
+                      class="w-full font-mono"
+                      size="small"
+                      placeholder="^[A-Z]{2}\d+$"
+                    />
+                  </div>
+                }
+                @if (f.type === 'textarea') {
+                  <div>
+                    <label class="mb-1 block text-xs font-medium text-surface-500">Rows</label>
+                    <p-inputnumber
+                      [ngModel]="f.rows"
+                      (ngModelChange)="update({ rows: $event ?? undefined })"
+                      class="w-full"
+                      size="small"
+                    />
+                  </div>
+                }
+              }
+            }
+          }
+        </div>
+      } @else {
+        <!-- RULES tab — scoped graphical editor -->
+        <ngx-rule-editor
+          [definition]="store.definition()!"
+          [(dependencies)]="dependencies"
+          [scopeTarget]="f.id"
+          (dependenciesChange)="onDependenciesChange($event)"
+        />
+      }
+    </div>
+  </div>
+}

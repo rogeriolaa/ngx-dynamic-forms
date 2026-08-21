@@ -1,0 +1,192 @@
+<div class="flex flex-col gap-3">
+  <div class="flex items-center justify-between">
+    <div>
+      <h4 class="m-0 text-sm font-semibold">Conditional logic</h4>
+      <p class="mb-0 mt-0.5 text-xs text-surface-500">
+        Rules run top-to-bottom and support chains: a field shown by one rule can
+        trigger another.
+      </p>
+    </div>
+    <p-button
+      label="Add rule"
+      icon="pi pi-plus"
+      size="small"
+      variant="text"
+      data-testid="add-rule-btn"
+      (onClick)="addRule()"
+    />
+  </div>
+
+  <!-- dependency chain overview -->
+  @if (chains().length > 0) {
+    <div class="rounded-md bg-surface-100 p-2 dark:bg-surface-800" data-testid="dependency-chains">
+      <p class="mb-1 mt-0 text-[11px] font-semibold uppercase tracking-wide text-surface-500">
+        Dependency map
+      </p>
+      @for (chain of chains(); track chain) {
+        <div class="flex items-center gap-1 text-xs text-surface-600 dark:text-surface-300">
+          <i class="pi pi-arrow-right text-[10px] text-primary-500"></i>
+          <span>{{ chain }}</span>
+        </div>
+      }
+    </div>
+  }
+
+  @if (rules().length === 0) {
+    <div class="rounded-md border border-dashed border-surface-300 p-4 text-center dark:border-surface-700">
+      <p class="mb-1 mt-0 text-sm font-medium">No conditional rules yet</p>
+      <p class="m-0 text-xs text-surface-500">
+        Add a rule to show or hide a field based on other answers.
+      </p>
+    </div>
+  }
+
+  @for (rule of visibleRules(); track rule.id) {
+    <div
+      class="rounded-lg border border-surface-200 bg-surface-0 p-3 shadow-sm dark:border-surface-700 dark:bg-surface-900"
+      [attr.data-testid]="'rule-' + rule.id"
+    >
+      <!-- action + target -->
+      <div class="flex items-center gap-2">
+        <p-select
+          [options]="ruleActions"
+          optionLabel="label"
+          optionValue="value"
+          [(ngModel)]="rule.action"
+          (ngModelChange)="updateRule(rule.id, { action: $event })"
+          [style]="{ width: '8.5rem' }"
+          size="small"
+          [attr.data-testid]="'rule-action-' + rule.id"
+        />
+        <span class="text-sm">this field</span>
+        <p-select
+          [options]="answerableFields()"
+          optionLabel="label"
+          optionValue="id"
+          [(ngModel)]="rule.target"
+          (ngModelChange)="updateRule(rule.id, { target: $event })"
+          [placeholder]="'Choose field…'"
+          [style]="{ width: '12rem' }"
+          size="small"
+          [attr.data-testid]="'rule-target-' + rule.id"
+        />
+        @if (rule.requireIt !== undefined) {
+          <label class="ml-auto flex cursor-pointer items-center gap-1.5 text-xs">
+            <p-checkbox
+              [binary]="true"
+              [(ngModel)]="rule.requireIt"
+              (ngModelChange)="updateRule(rule.id, { requireIt: $event })"
+              [attr.data-testid]="'rule-require-' + rule.id"
+            />
+            require answer
+          </label>
+        }
+        <p-button
+          icon="pi pi-trash"
+          severity="danger"
+          variant="text"
+          size="small"
+          pTooltip="Delete rule"
+          [attr.data-testid]="'rule-delete-' + rule.id"
+          (onClick)="removeRule(rule.id)"
+        />
+      </div>
+
+      <!-- conditions -->
+      <div class="mt-3 flex flex-col gap-2 border-t border-surface-100 pt-3 dark:border-surface-800">
+        <span class="text-xs font-medium uppercase tracking-wide text-surface-400">
+          {{ rule.action === 'show' ? 'show when' : rule.action === 'hide' ? 'hide when' : rule.action === 'enable' ? 'enable when' : 'disable when' }}
+          all / any match
+        </span>
+
+        @for (condition of rule.conditions; track $index; let last = $last) {
+          <div class="flex flex-wrap items-center gap-2">
+            @if ($index > 0) {
+              <p-select
+                [options]="[{ label: 'AND', value: 'AND' }, { label: 'OR', value: 'OR' }]"
+                [(ngModel)]="rule.logic"
+                (ngModelChange)="updateRule(rule.id, { logic: $event })"
+                [style]="{ width: '5.5rem' }"
+                size="small"
+              />
+            }
+
+            <p-select
+              [options]="conditionSourceFields()"
+              optionLabel="label"
+              optionValue="id"
+              [(ngModel)]="condition.field"
+              (ngModelChange)="updateCondition(rule.id, $index, { field: $event })"
+              placeholder="Field…"
+              [style]="{ width: '11rem' }"
+              size="small"
+              [attr.data-testid]="'cond-field-' + rule.id + '-' + $index"
+            />
+
+            <p-select
+              [options]="operators"
+              optionLabel="label"
+              optionValue="value"
+              [(ngModel)]="condition.operator"
+              (ngModelChange)="updateCondition(rule.id, $index, { operator: $event })"
+              [style]="{ width: '11rem' }"
+              size="small"
+            />
+
+            @if (operatorNeedsValue(condition.operator)) {
+              @if (optionsOf(condition.field).length > 0 && condition.operator === 'equals') {
+                <p-select
+                  [options]="optionsOf(condition.field)"
+                  optionLabel="label"
+                  optionValue="value"
+                  [ngModel]="condition.value"
+                  (ngModelChange)="updateCondition(rule.id, $index, { value: '' + $event })"
+                  placeholder="Value…"
+                  [style]="{ width: '9rem' }"
+                  size="small"
+                />
+              } @else if (isNumericField(condition.field)) {
+                <p-inputnumber
+                  [ngModel]="condition.value"
+                  (ngModelChange)="updateCondition(rule.id, $index, { value: '' + $event })"
+                  [style]="{ width: '8rem' }"
+                  size="small"
+                />
+              } @else {
+                <input
+                  pInputText
+                  [ngModel]="condition.value"
+                  (ngModelChange)="updateCondition(rule.id, $index, { value: $event })"
+                  placeholder="Value (comma-separate lists)"
+                  [style]="{ width: '13rem' }"
+                  size="small"
+                />
+              }
+            }
+
+            @if (rule.conditions.length > 1) {
+              <p-button
+                icon="pi pi-times"
+                variant="text"
+                size="small"
+                severity="secondary"
+                pTooltip="Remove condition"
+                (onClick)="removeCondition(rule.id, $index)"
+              />
+            }
+          </div>
+        }
+
+        <div>
+          <p-button
+            label="Add condition"
+            icon="pi pi-plus"
+            variant="text"
+            size="small"
+            (onClick)="addCondition(rule.id)"
+          />
+        </div>
+      </div>
+    </div>
+  }
+</div>

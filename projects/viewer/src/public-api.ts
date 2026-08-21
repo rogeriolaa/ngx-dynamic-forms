@@ -1,5 +1,4 @@
 /*
- * Public API Surface of viewer
+ * Public API of @n0n3br/ngx-dynamic-forms-viewer
  */
-
-export * from './lib/viewer';
+export * from './lib';
