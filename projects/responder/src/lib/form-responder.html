@@ -1,0 +1,144 @@
+@switch (status()) {
+  @case ('loading') {
+    <div class="flex justify-center p-10">
+      <p-progressspinner />
+    </div>
+  }
+  @case ('blocked') {
+    <p-card data-testid="responder-blocked">
+      <div class="flex flex-col items-center gap-3 py-8 text-center">
+        <i class="pi pi-lock text-4xl text-surface-400"></i>
+        <h3 class="m-0 text-lg font-semibold">Not authorized</h3>
+        <p class="m-0 text-sm text-surface-500">
+          You don't have permission to answer this form.
+        </p>
+      </div>
+    </p-card>
+  }
+  @case ('missing') {
+    <p-card data-testid="responder-missing">
+      <div class="flex flex-col items-center gap-3 py-8 text-center">
+        <i class="pi pi-file-excel text-4xl text-surface-400"></i>
+        <h3 class="m-0 text-lg font-semibold">Form not available</h3>
+        <p class="m-0 text-sm text-surface-500">This form has no published version yet.</p>
+      </div>
+    </p-card>
+  }
+  @case ('submitted') {
+    <p-card data-testid="responder-submitted">
+      <div class="flex flex-col items-center gap-3 py-8 text-center">
+        <i class="pi pi-check-circle text-5xl text-green-500"></i>
+        <h3 class="m-0 text-lg font-semibold">Answer submitted</h3>
+        <p class="m-0 text-sm text-surface-500">
+          Thank you! Your answers were recorded against version
+          {{ submittedVersion() }} of this form.
+        </p>
+        @if (lastSavedAt()) {
+          <p class="m-0 text-xs text-surface-400">Submitted {{ lastSavedAt() }}</p>
+        }
+      </div>
+    </p-card>
+  }
+  @case ('ready') {
+    @if (definitionState(); as def) {
+      <form [formGroup]="form()!" (ngSubmit)="submit()" class="flex flex-col gap-6" data-testid="responder-form">
+        <header>
+          <h2 class="m-0 text-xl font-semibold">{{ def.title }}</h2>
+          @if (def.description) {
+            <p class="mb-0 mt-1 text-sm text-surface-500">{{ def.description }}</p>
+          }
+          <p class="mb-0 mt-1 text-xs text-surface-400">Version {{ def.version }}</p>
+        </header>
+
+        <!-- resume draft prompt -->
+        @if (draftPrompt(); as prompt) {
+          <p-dialog
+            [visible]="true"
+            [modal]="true"
+            [closable]="false"
+            [draggable]="false"
+            [resizable]="false"
+            header="Draft found"
+            [style]="{ width: '30rem' }"
+            data-testid="draft-dialog"
+          >
+            <p class="m-0 text-sm" data-testid="draft-dialog-text">
+              You have a saved draft for this form (saved {{ prompt.savedAt }}).
+              Load your previous answers or start over?
+            </p>
+            @if (prompt.report.dropped.length > 0) {
+              <div
+                class="mt-3 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+                data-testid="draft-merge-warning"
+              >
+                The form changed since your draft — {{ prompt.report.restored.length }} value(s)
+                restored, dropped: {{ droppedList(prompt) }}.
+              </div>
+            }
+            <ng-template #footer>
+              <div class="flex justify-end gap-2">
+                <p-button
+                  label="Start over"
+                  severity="secondary"
+                  size="small"
+                  data-testid="draft-start-over"
+                  (onClick)="startOver()"
+                />
+                <p-button label="Load draft" size="small" data-testid="draft-load" (onClick)="loadDraft()" />
+              </div>
+            </ng-template>
+          </p-dialog>
+        }
+
+        <div class="grid grid-cols-12 gap-4">
+          @for (field of renderableFields(); track field.id) {
+            @if (field.type === 'section') {
+              <div
+                class="col-span-full border-b border-surface-200 pb-1 pt-2 dark:border-surface-700"
+                [attr.data-testid]="'section-' + field.id"
+              >
+                <h3 class="mb-0 mt-1 text-base font-semibold text-surface-700 dark:text-surface-200">
+                  {{ field.label }}
+                </h3>
+                @if (field.helpText) {
+                  <p class="mb-0 mt-1 text-xs text-surface-500">{{ field.helpText }}</p>
+                }
+              </div>
+            } @else if (!isHidden(field.id)) {
+              <div [class]="columnClass(field)" [attr.data-testid]="'field-' + field.id">
+                <ngx-field-host [field]="field" [control]="$any(form()!.controls[field.id])" />
+              </div>
+            }
+          }
+        </div>
+
+        @if (validationErrors().length > 0) {
+          <p-message severity="error" [closable]="false" data-testid="validation-summary">
+            Please fix {{ validationErrors().length }} highlighted field(s):
+            {{ validationErrors().join(', ') }}
+          </p-message>
+        }
+
+        <footer class="flex items-center justify-between gap-3 border-t border-surface-200 pt-4 dark:border-surface-700">
+          <span class="text-xs text-surface-400" data-testid="autosave-state">
+            {{ saveStateLabel() }}
+          </span>
+          <div class="flex gap-2">
+            @if (canPersist()) {
+              <p-button
+                label="Save & continue later"
+                icon="pi pi-save"
+                severity="secondary"
+                size="small"
+                [loading]="saveState() === 'saving'"
+                data-testid="save-draft-btn"
+                (onClick)="saveDraftExplicit()"
+              />
+            }
+            <p-button label="Submit" icon="pi pi-send" size="small" data-testid="submit-btn" (onClick)="submit()" />
+          </div>
+        </footer>
+      </form>
+    }
+  }
+}

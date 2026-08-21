@@ -4,7 +4,9 @@
   "peerDependencies": {
     "@angular/common": "^22.1.0",
     "@angular/core": "^22.1.0",
-    "@n0n3br/ngx-form-dependency-engine": "^0.0.3"
+    "@angular/forms": "^22.0.0",
+    "@n0n3br/ngx-form-dependency-engine": "^0.0.3",
+    "primeng": "^22.1.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"

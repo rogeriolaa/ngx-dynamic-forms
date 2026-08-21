@@ -3,7 +3,11 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "paths": {
+        "paths": {
+      "@n0n3br/ngx-dynamic-forms-core": ["./dist/core"],
+      "@n0n3br/ngx-dynamic-forms-builder": ["./dist/builder"],
+      "@n0n3br/ngx-dynamic-forms-responder": ["./dist/responder"],
+      "@n0n3br/ngx-dynamic-forms-viewer": ["./dist/viewer"],
       "builder": ["./dist/builder"],
       "core": ["./dist/core"],
       "responder": ["./dist/responder"],

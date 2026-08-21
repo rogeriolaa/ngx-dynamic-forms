@@ -19,6 +19,15 @@ export * from './lib/draft/merge-draft';
 export * from './lib/registry/field-types';
 export * from './lib/registry/field-type-registry';
 
+// Shared field runtime (FormGroup build + PrimeNG renderers)
+// Used by the responder AND the builder's live preview.
+export * from './lib/runtime/form-group-builder';
+export * from './lib/runtime/fields/field-shell';
+export * from './lib/runtime/fields/text-fields';
+export * from './lib/runtime/fields/number-fields';
+export * from './lib/runtime/fields/selection-fields';
+export * from './lib/runtime/fields/field-host';
+
 // Persistence ports, default IndexedDB implementation, DI helpers
 export * from './lib/persistence/repository';
 export * from './lib/persistence/indexeddb-repository';
