@@ -1,9 +1,10 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
+import { provideDemoPersistence } from './demo-persistence';
 
 const NdPreset = definePreset(Aura, {
   semantic: {
@@ -27,7 +28,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
-    provideRouter(routes),
+    provideRouter(routes, withComponentInputBinding()),
     providePrimeNG({
       ripple: true,
       theme: {
@@ -41,5 +42,6 @@ export const appConfig: ApplicationConfig = {
         },
       },
     }),
+    provideDemoPersistence(),
   ],
 };
