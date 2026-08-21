@@ -3,6 +3,12 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "paths": {
+      "builder": ["./dist/builder"],
+      "core": ["./dist/core"],
+      "responder": ["./dist/responder"],
+      "viewer": ["./dist/viewer"]
+    },
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
@@ -19,5 +25,37 @@
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true
   },
-  "files": []
+  "files": [],
+  "references": [
+    {
+      "path": "./projects/core/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/core/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/builder/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/builder/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/responder/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/responder/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/viewer/tsconfig.lib.json"
+    },
+    {
+      "path": "./projects/viewer/tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/demo/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/demo/tsconfig.spec.json"
+    }
+  ]
 }

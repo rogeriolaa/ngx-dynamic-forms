@@ -1,0 +1,26 @@
+/* Layer order: Tailwind base < PrimeNG < Tailwind utilities.
+   Utilities always win over PrimeNG component styles; PrimeNG design
+   tokens stay untouched by Tailwind preflight. */
+@layer tailwind-base, primeng, tailwind-utilities;
+
+@import 'tailwindcss/theme.css' layer(tailwind-base);
+@import 'tailwindcss/utilities.css' layer(tailwind-utilities);
+@import 'primeicons/primeicons.css';
+
+@plugin 'tailwindcss-primeui';
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background: var(--p-surface-50);
+  color: var(--p-text-color);
+}
+
+.app-dark body {
+  background: var(--p-surface-950);
+}
