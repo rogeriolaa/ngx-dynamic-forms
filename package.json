@@ -40,5 +40,12 @@
     "tailwindcss-primeui": "^0.6.1",
     "typescript": "~6.0.2",
     "vitest": "^4.0.8"
+  },
+  "projects/core/package": {
+    "json": {
+      "peerDependencies": {
+        "@n0n3br/ngx-form-dependency-engine": "^0.0.3"
+      }
+    }
   }
 }
