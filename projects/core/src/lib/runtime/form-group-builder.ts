@@ -79,7 +79,11 @@ export function buildFormGroup(definition: FormDefinition): BuiltForm {
 
 const DATE_TYPES = new Set(['date']);
 
-/** Converts Date instances to ISO strings so values survive JSON persistence. */
+/**
+ * Converts Date instances to ISO strings so values survive JSON persistence.
+ * Empty values (`null`, `''`, `[]`) are omitted entirely — "no answer" must
+ * not masquerade as data in drafts or merge reports.
+ */
 export function serializeValues(
   definition: FormDefinition,
   raw: FormValues,
@@ -88,6 +92,9 @@ export function serializeValues(
   for (const field of definition.fields) {
     const value = raw[field.id];
     if (value === undefined || field.type === 'section') continue;
+    if (value === null || value === '') continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+
     out[field.id] = DATE_TYPES.has(field.type) && value instanceof Date
       ? value.toISOString()
       : value;

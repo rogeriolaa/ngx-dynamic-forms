@@ -1,39 +1,27 @@
 import { DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import {
   FormDefinition,
   NgxFormsService,
-  ResolvedPermissions,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { DialogModule } from 'primeng/dialog';
-import { InputTextModule } from 'primeng/inputtext';
-import { TagModule } from 'primeng/tag';
-import { TooltipModule } from 'primeng/tooltip';
 import { DemoState } from '../demo-state';
 
 @Component({
   selector: 'app-dashboard-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    DatePipe,
-    RouterLink,
-    FormsModule,
-    ButtonModule,
-    CardModule,
-    DialogModule,
-    InputTextModule,
-    TagModule,
-    TooltipModule,
-  ],
+  imports: [DatePipe, RouterLink, FormsModule],
+  styles: `
+    .new-form-btn { align-self: flex-start; }
+    .form-icon { color: var(--ndf-primary); margin-top: 0.15rem; }
+  `,
   templateUrl: './dashboard-page.html',
 })
 export class DashboardPage {
   readonly state = inject(DemoState);
   private readonly service = inject(NgxFormsService);
+  private readonly router = inject(Router);
 
   readonly forms = signal<FormDefinition[]>([]);
   readonly loading = signal(true);
@@ -59,7 +47,7 @@ export class DashboardPage {
     this.showCreate.set(false);
     this.newTitle.set('');
     await this.refresh();
-    window.location.assign(`/builder/${created.id}`);
+    void this.router.navigate(['/builder', created.id]);
   }
 
   async duplicate(form: FormDefinition): Promise<void> {
@@ -72,9 +60,7 @@ export class DashboardPage {
     await this.refresh();
   }
 
-  statusSeverity(status: string): 'success' | 'warn' | 'secondary' {
-    if (status === 'published') return 'success';
-    if (status === 'draft') return 'warn';
-    return 'secondary';
+  statusSeverity(status: string): string {
+    return status === 'published' ? 'ndf-badge--success' : 'ndf-badge--warning';
   }
 }

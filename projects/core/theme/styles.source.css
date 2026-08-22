@@ -1,0 +1,194 @@
+/*
+ * @n0n3br/ngx-dynamic-forms-core — compiled stylesheet
+ *
+ * Ships two things to consuming apps:
+ * 1. The design-token sheet (`--ndf-*` custom properties) with light/dark
+ *    defaults. Hosts restyle EVERYTHING by overriding variables on `:root`
+ *    or any container — no rebuild, no library fork:
+ *
+ *      :root { --ndf-primary: #7c3aed; --ndf-radius: 0.5rem; }
+ *
+ * 2. Tailwind utilities actually used by the library templates (compiled
+ *    at package build time from these sources), plus a small set of
+ *    semantic component classes built from those utilities.
+ */
+
+@import 'tailwindcss';
+
+/* Class-based dark mode: hosts toggle `.app-dark` on <html>. */
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
+@source './';
+@source '../../builder/src/';
+@source '../../responder/src/';
+@source '../../viewer/src/';
+
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                       */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --ndf-primary: #0284c7;            /* sky-600 */
+  --ndf-primary-hover: #0369a1;      /* sky-700 */
+  --ndf-primary-soft: #e0f2fe;       /* sky-100 */
+  --ndf-primary-contrast: #ffffff;
+
+  --ndf-bg: #f1f5f9;                 /* slate-100 page background */
+  --ndf-surface: #ffffff;
+  --ndf-surface-alt: #f8fafc;        /* slate-50 subtle fills */
+  --ndf-border: #e2e8f0;             /* slate-200 */
+  --ndf-border-strong: #cbd5e1;      /* slate-300 */
+
+  --ndf-text: #0f172a;               /* slate-900 */
+  --ndf-text-muted: #64748b;         /* slate-500 */
+  --ndf-text-faint: #94a3b8;         /* slate-400 */
+
+  --ndf-danger: #dc2626;
+  --ndf-danger-soft: #fee2e2;
+  --ndf-warning: #d97706;
+  --ndf-warning-soft: #fef3c7;
+  --ndf-success: #16a34a;
+  --ndf-success-soft: #dcfce7;
+  --ndf-info-soft: #e0f2fe;
+
+  --ndf-radius: 0.5rem;
+  --ndf-radius-sm: 0.375rem;
+  --ndf-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+}
+
+.app-dark {
+  --ndf-primary: #38bdf8;            /* sky-400 */
+  --ndf-primary-hover: #7dd3fc;      /* sky-300 */
+  --ndf-primary-soft: #082f49;       /* sky-950 */
+  --ndf-primary-contrast: #082f49;
+
+  --ndf-bg: #020617;                 /* slate-950 */
+  --ndf-surface: #0f172a;            /* slate-900 */
+  --ndf-surface-alt: #1e293b;        /* slate-800 */
+  --ndf-border: #334155;             /* slate-700 */
+  --ndf-border-strong: #475569;
+
+  --ndf-text: #e2e8f0;
+  --ndf-text-muted: #94a3b8;
+  --ndf-text-faint: #64748b;
+
+  --ndf-danger: #f87171;
+  --ndf-danger-soft: #450a0a;
+  --ndf-warning: #fbbf24;
+  --ndf-warning-soft: #451a03;
+  --ndf-success: #4ade80;
+  --ndf-success-soft: #052e16;
+  --ndf-info-soft: #082f49;
+
+  --ndf-shadow: none;
+}
+
+/* ------------------------------------------------------------------ */
+/* Semantic component classes (tokens in, utilities out)              */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  /* Buttons */
+  .ndf-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none;
+    border-color: transparent;
+    background: var(--ndf-primary);
+    color: var(--ndf-primary-contrast);
+  }
+  .ndf-btn:hover:not(:disabled) { background: var(--ndf-primary-hover); }
+  .ndf-btn:focus-visible { outline: 2px solid var(--ndf-primary); outline-offset: 2px; }
+
+  .ndf-btn--secondary {
+    background: var(--ndf-surface);
+    color: var(--ndf-text);
+    border-color: var(--ndf-border);
+  }
+  .ndf-btn--secondary:hover:not(:disabled) {
+    background: var(--ndf-surface-alt);
+    border-color: var(--ndf-border-strong);
+  }
+  .ndf-btn--danger {
+    background: var(--ndf-danger);
+    color: #fff;
+  }
+  .ndf-btn--ghost {
+    background: transparent;
+    color: var(--ndf-text-muted);
+  }
+  .ndf-btn--ghost:hover:not(:disabled) {
+    background: var(--ndf-surface-alt);
+    color: var(--ndf-text);
+  }
+  .ndf-btn--sm { @apply px-2 py-1 text-xs; }
+  .ndf-btn--icon { @apply px-2 py-1.5; }
+
+  /* Inputs */
+  .ndf-input,
+  .ndf-select,
+  .ndf-textarea {
+    @apply w-full rounded-md border px-3 py-2 text-sm transition-colors;
+    background: var(--ndf-surface);
+    border-color: var(--ndf-border);
+    color: var(--ndf-text);
+  }
+  .ndf-input::placeholder,
+  .ndf-textarea::placeholder { color: var(--ndf-text-faint); }
+  .ndf-input:focus-visible,
+  .ndf-select:focus-visible,
+  .ndf-textarea:focus-visible {
+    outline: 2px solid var(--ndf-primary);
+    outline-offset: -1px;
+    border-color: var(--ndf-primary);
+  }
+  .ndf-input:disabled,
+  .ndf-select:disabled,
+  .ndf-textarea:disabled {
+    background: var(--ndf-surface-alt);
+    cursor: not-allowed;
+    opacity: 0.75;
+  }
+  .ndf-input--invalid { border-color: var(--ndf-danger); }
+
+  .ndf-checkbox {
+    @apply h-4 w-4 rounded-sm border cursor-pointer accent-current;
+    accent-color: var(--ndf-primary);
+    border-color: var(--ndf-border-strong);
+  }
+
+  /* Surfaces */
+  .ndf-card {
+    @apply rounded-xl border p-4;
+    background: var(--ndf-surface);
+    border-color: var(--ndf-border);
+    box-shadow: var(--ndf-shadow);
+  }
+
+  /* Badges & alerts */
+  .ndf-badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold;
+    background: var(--ndf-surface-alt);
+    color: var(--ndf-text-muted);
+    border: 1px solid var(--ndf-border);
+  }
+  .ndf-badge--primary { background: var(--ndf-primary-soft); color: var(--ndf-primary); border-color: transparent; }
+  .ndf-badge--success { background: var(--ndf-success-soft); color: var(--ndf-success); border-color: transparent; }
+  .ndf-badge--warning { background: var(--ndf-warning-soft); color: var(--ndf-warning); border-color: transparent; }
+  .ndf-badge--danger { background: var(--ndf-danger-soft); color: var(--ndf-danger); border-color: transparent; }
+
+  .ndf-alert {
+    @apply rounded-md px-3 py-2 text-sm;
+    background: var(--ndf-info-soft);
+    color: var(--ndf-text);
+    border: 1px solid var(--ndf-border);
+  }
+  .ndf-alert--error { background: var(--ndf-danger-soft); color: var(--ndf-danger); border-color: transparent; }
+  .ndf-alert--warn { background: var(--ndf-warning-soft); color: var(--ndf-warning); border-color: transparent; }
+  .ndf-alert--success { background: var(--ndf-success-soft); color: var(--ndf-success); border-color: transparent; }
+
+  /* Spinner */
+  .ndf-spinner {
+    @apply inline-block h-8 w-8 animate-spin rounded-full align-middle;
+    border: 3px solid var(--ndf-border);
+    border-top-color: var(--ndf-primary);
+  }
+}

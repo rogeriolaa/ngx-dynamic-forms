@@ -4,14 +4,10 @@ import type { Dependency } from '@n0n3br/ngx-form-dependency-engine';
 import {
   FieldDefinition,
   FormDefinition,
+  NdfIcon,
   describeChains,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { CheckboxModule } from 'primeng/checkbox';
-import { TooltipModule } from 'primeng/tooltip';
+
 
 /** Friendly operator catalog — keys match the engine's ConditionOperator union. */
 export const RULE_OPERATORS: Array<{ value: string; label: string; needsValue: boolean }> = [
@@ -72,15 +68,96 @@ const VALUELESS = new Set(['section']);
 @Component({
   selector: 'ngx-rule-editor',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    FormsModule,
-    ButtonModule,
-    SelectModule,
-    InputTextModule,
-    InputNumberModule,
-    CheckboxModule,
-    TooltipModule,
-  ],
+  styles: `
+    .rules { display: flex; flex-direction: column; gap: 0.75rem; }
+    .rules-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .rules-head h4 { margin: 0; font-size: 0.875rem; font-weight: 600; }
+    .rules-hint { margin: 0.125rem 0 0; font-size: 0.6875rem; color: var(--ndf-text-muted); }
+
+    .chain-map {
+      border-radius: 6px;
+      background: var(--ndf-surface-alt);
+      padding: 0.5rem;
+    }
+    :host-context(.app-dark) .chain-map { background: var(--ndf-surface-alt); }
+    .chain-map-title {
+      margin: 0 0 0.25rem;
+      font-size: 0.625rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ndf-text-muted);
+    }
+    .chain-line {
+      display: flex; align-items: center; gap: 0.25rem;
+      font-size: 0.6875rem; color: var(--ndf-text);
+    }
+    .chain-line i { font-size: 0.625rem; color: var(--p-primary-500); }
+
+    .rule-empty {
+      text-align: center;
+      padding: 1rem;
+      border: 1px dashed var(--ndf-border-strong);
+      border-radius: 6px;
+    }
+    :host-context(.app-dark) .rule-empty { border-color: var(--ndf-border); }
+    .rule-empty p { margin: 0; }
+
+    .rule-card {
+      border: 1px solid var(--ndf-border);
+      border-radius: 8px;
+      background: var(--p-surface-0);
+      padding: 0.75rem;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    }
+    :host-context(.app-dark) .rule-card { background: var(--ndf-surface); border-color: var(--ndf-border); }
+
+    .rule-top { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
+    .rule-top .sentence-word { font-size: 0.8125rem; white-space: nowrap; }
+    .require-toggle {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.375rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .conditions {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--ndf-surface-alt);
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    :host-context(.app-dark) .conditions { border-top-color: var(--ndf-surface-alt); }
+    .conditions-label {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ndf-text-faint);
+    }
+    .condition-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+    .add-condition { align-self: flex-start; }
+    .rule-select { width: auto; min-width: 8.5rem; padding-top: 0.35rem; padding-bottom: 0.35rem; }
+    .logic-select { min-width: 4.5rem; }
+    .value-input { width: 8rem; }
+    .value-input.wide { width: 12rem; }
+    .icon-btn {
+      display: inline-flex;
+      border: none;
+      background: transparent;
+      padding: 0.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--ndf-text-muted);
+    }
+    .icon-btn:hover { background: var(--ndf-surface-alt); color: var(--ndf-text); }
+    .icon-btn.danger:hover { color: var(--ndf-danger); }
+  `,
+    imports: [FormsModule, NdfIcon],
   templateUrl: './rule-editor.html',
 })
 export class RuleEditor {
@@ -97,6 +174,10 @@ export class RuleEditor {
 
   readonly operators = RULE_OPERATORS;
   readonly ruleActions = RULE_ACTIONS;
+  readonly LOGIC_CHOICES = [
+    { label: 'AND', value: 'AND' },
+    { label: 'OR', value: 'OR' },
+  ];
 
   /** Rules rendered under the current scope. */
   readonly visibleRules = computed(() => {
@@ -246,16 +327,23 @@ export class RuleEditor {
         ? { logic: 'OR', conditions }
         : { logic: 'AND', conditions };
 
-    const effects: Array<Record<string, unknown>> = [{ type: rule.action }];
-    const elseEffects: Array<Record<string, unknown>> = [];
+    // A sentence like "Show X when Y" means X stays HIDDEN otherwise —
+    // so every action gets its mirror applied on the else-branch.
+    const MIRROR: Record<RuleAction, RuleAction> = {
+      show: 'hide',
+      hide: 'show',
+      enable: 'disable',
+      disable: 'enable',
+    };
 
-    if (rule.action === 'hide' || rule.action === 'disable') {
-      // mirror-op on the else branch so toggling back restores state
-      effects.push({ type: 'unsetRequired' });
-    }
+    const effects: Array<Record<string, unknown>> = [{ type: rule.action }];
+    const elseEffects: Array<Record<string, unknown>> = [{ type: MIRROR[rule.action] }];
+
     if (rule.requireIt) {
-      effects.push({ type: 'setRequired' });
-      elseEffects.push({ type: 'unsetRequired' });
+      if (rule.action === 'show' || rule.action === 'enable') {
+        effects.push({ type: 'setRequired' });
+        elseEffects.push({ type: 'unsetRequired' });
+      }
     }
 
     return {
@@ -263,7 +351,7 @@ export class RuleEditor {
       target: rule.target,
       when,
       effects,
-      ...(elseEffects.length > 0 ? { elseEffects } : {}),
+      elseEffects,
     } as unknown as Dependency;
   }
 
@@ -286,16 +374,21 @@ export class RuleEditor {
   }
 
   private deserialize(dep: Dependency): UiRule {
-    const effectTypes = new Set(
-      [...(dep.effects ?? []), ...(dep.elseEffects ?? [])].map(
-        (e) => (e as { type?: string }).type ?? '',
-      ),
+    // Action comes from the THEN branch; elseEffects are the mirror and must
+    // not win when both branches contain opposing actions.
+    const thenTypes = new Set(
+      (dep.effects ?? []).map((e) => (e as { type?: string }).type ?? ''),
     );
     let action: RuleAction = 'show';
-    if (effectTypes.has('show')) action = 'show';
-    else if (effectTypes.has('hide')) action = 'hide';
-    else if (effectTypes.has('enable')) action = 'enable';
-    else if (effectTypes.has('disable')) action = 'disable';
+    if (thenTypes.has('show')) action = 'show';
+    else if (thenTypes.has('hide')) action = 'hide';
+    else if (thenTypes.has('enable')) action = 'enable';
+    else if (thenTypes.has('disable')) action = 'disable';
+
+    const allTypes = new Set([
+      ...thenTypes,
+      ...(dep.elseEffects ?? []).map((e) => (e as { type?: string }).type ?? ''),
+    ]);
 
     const conditionsRaw = (dep.when?.conditions ?? []) as unknown as Array<
       Record<string, unknown>
@@ -310,7 +403,7 @@ export class RuleEditor {
       id: dep.id || nextRuleId(),
       action,
       target: dep.target,
-      requireIt: effectTypes.has('setRequired'),
+      requireIt: allTypes.has('setRequired'),
       logic,
       conditions: conditionsRaw
         .filter((c) => typeof c['field'] === 'string')

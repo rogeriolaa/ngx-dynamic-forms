@@ -1,41 +1,51 @@
-<header
-  class="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-surface-200 bg-surface-0/90 px-4 py-2.5 backdrop-blur dark:border-surface-800 dark:bg-surface-900/90"
->
-  <button
-    type="button"
-    class="flex cursor-pointer items-center gap-2 border-none bg-transparent p-0"
-    (click)="goHome()"
-  >
-    <i class="pi pi-objects-column text-xl text-primary-500"></i>
-    <span class="text-base font-semibold">ngx-dynamic-forms</span>
+<header class="app-header">
+  <button type="button" class="app-brand" (click)="goHome()">
+    <span class="brand-mark">▦</span>
+    <span>ngx-dynamic-forms</span>
   </button>
 
-  <p-tag value="demo" severity="info" [rounded]="true" />
+  <span class="ndf-badge ndf-badge--primary">demo</span>
 
-  <div class="ml-auto flex items-center gap-3">
-    <span class="hidden text-xs text-surface-400 sm:inline">Acting as</span>
-    <p-select
-      [options]="roles"
-      optionLabel="label"
-      optionValue="value"
-      [(ngModel)]="selectedRole"
-      [style]="{ width: '14rem' }"
-      size="small"
+  <div class="app-header-right">
+    <span class="app-header-hint">Acting as</span>
+    <select
+      class="ndf-select"
+      style="width: 13rem"
+      [ngModel]="selectedRole"
+      (ngModelChange)="state.setRole($event)"
       data-testid="role-switcher"
-    />
-    <p-button
-      [icon]="state.darkMode() ? 'pi pi-sun' : 'pi pi-moon'"
-      severity="secondary"
-      variant="text"
-      size="small"
-      [rounded]="true"
-      pTooltip="Toggle dark mode"
+    >
+      @for (role of roles; track role.value) {
+        <option [value]="role.value">{{ role.label }}</option>
+      }
+    </select>
+
+    <label class="accent-picker" title="Override --ndf-primary token">
+      Accent
+      <input
+        type="color"
+        [value]="accent()"
+        (input)="setAccent($any($event.target).value)"
+        data-testid="accent-picker"
+      />
+    </label>
+
+    <button
+      type="button"
+      class="icon-btn"
+      [title]="state.darkMode() ? 'Switch to light' : 'Switch to dark'"
       data-testid="dark-toggle"
-      (onClick)="state.darkMode.set(!state.darkMode())"
-    />
+      (click)="state.darkMode.set(!state.darkMode())"
+    >
+      @if (state.darkMode()) {
+        ☀
+      } @else {
+        ☾
+      }
+    </button>
   </div>
 </header>
 
-<main class="mx-auto w-full max-w-6xl px-4 py-6">
+<main class="app-main">
   <router-outlet />
 </main>

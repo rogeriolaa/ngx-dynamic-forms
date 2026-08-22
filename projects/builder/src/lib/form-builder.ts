@@ -14,6 +14,7 @@ import type { Dependency } from '@n0n3br/ngx-form-dependency-engine';
 import {
   FieldType,
   FormDefinition,
+  NdfIcon,
   FORM_DEFINITION_REPOSITORY,
   NgxFormsService,
   PermissionsInput,
@@ -22,13 +23,6 @@ import {
   validateDefinition,
   resolvePermissions,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { CardModule } from 'primeng/card';
-import { DialogModule } from 'primeng/dialog';
-import { MessageModule } from 'primeng/message';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TooltipModule } from 'primeng/tooltip';
 import { FormBuilderStore } from './form-builder-store';
 import { BuilderPalette } from './builder-palette';
 import { BuilderCanvas } from './builder-canvas';
@@ -52,13 +46,7 @@ type BuilderStatus = 'loading' | 'ready' | 'blocked' | 'missing';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
-    ButtonModule,
-    InputTextModule,
-    CardModule,
-    DialogModule,
-    MessageModule,
-    ProgressSpinnerModule,
-    TooltipModule,
+    NdfIcon,
     BuilderPalette,
     BuilderCanvas,
     PropertyPanel,
@@ -66,6 +54,111 @@ type BuilderStatus = 'loading' | 'ready' | 'blocked' | 'missing';
     VersionHistory,
   ],
   providers: [FormBuilderStore, NgxFormsService],
+  styles: `
+    .builder { display: flex; flex-direction: column; }
+    .builder-header {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--ndf-border);
+    }
+    :host-context(.app-dark) .builder-header { border-bottom-color: var(--ndf-border); }
+    .title-input { flex: 1; min-width: 12rem; font-weight: 600; }
+    .version-chip {
+      border-radius: 999px;
+      background: var(--ndf-border);
+      padding: 0.25rem 0.625rem;
+      font-size: 0.6875rem; font-weight: 500;
+    }
+    :host-context(.app-dark) .version-chip { background: var(--ndf-border); }
+    .header-actions { display: flex; align-items: center; gap: 0.375rem; }
+
+    .feedback { margin-top: 0.5rem; }
+
+    .issues-panel {
+      margin-top: 0.5rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--ndf-border);
+    }
+    :host-context(.app-dark) .issues-panel { border-color: var(--ndf-border); }
+    .issues-title {
+      margin: 0 0 0.5rem;
+      font-size: 0.6875rem; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--ndf-text-muted);
+    }
+    .issue-row { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.875rem; }
+    .issue-row i { margin-top: 0.125rem; font-size: 0.75rem; }
+    .issue-error i, .issue-error span { color: var(--ndf-danger); }
+    .issue-warn i { color: var(--p-amber-500); }
+
+    .builder-body {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+    @media (min-width: 48rem) {
+      .builder-body.design { grid-template-columns: 13rem minmax(0, 1fr) 18rem; }
+      .builder-body.previewing { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    .empty-properties {
+      border: 1px dashed var(--ndf-border-strong);
+      border-radius: 12px;
+      text-align: center;
+      padding: 1.5rem 1rem;
+    }
+    :host-context(.app-dark) .empty-properties { border-color: var(--ndf-border); }
+    .empty-properties i { font-size: 1.5rem; color: var(--ndf-border-strong); }
+    .empty-properties p { margin: 0.5rem 0 0; font-size: 0.8125rem; }
+    .empty-properties p + p { margin-top: 0; font-size: 0.6875rem; color: var(--ndf-text-muted); }
+
+    .properties-frame {
+      border: 1px solid var(--ndf-border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    :host-context(.app-dark) .properties-frame { border-color: var(--ndf-border); }
+    .state-card { text-align: center; padding: 2rem 0; color: var(--ndf-text); }
+    .state-card h3 { margin: 0.75rem 0 0; font-size: 1.05rem; }
+    .state-card p { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgb(0 0 0 / 45%);
+    }
+    .modal {
+      width: min(24rem, 92vw);
+      max-height: 86vh;
+      overflow: auto;
+      border-radius: 12px;
+      padding: 1.25rem;
+      background: var(--ndf-surface);
+      border: 1px solid var(--ndf-border);
+    }
+    .modal.wide { width: min(34rem, 94vw); }
+    .modal h3 { margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--ndf-text); }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; }
+    .dialog-actions.split { justify-content: space-between; }
+    .json-area { font-family: ui-monospace, monospace; font-size: 0.7rem; }
+
+    .icon-btn {
+      display: inline-flex;
+      border: none;
+      background: transparent;
+      padding: 0.375rem;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--ndf-text-muted);
+    }
+    .icon-btn:hover { background: var(--ndf-surface-alt); color: var(--ndf-text); }
+  `,
   templateUrl: './form-builder.html',
 })
 export class FormBuilder {

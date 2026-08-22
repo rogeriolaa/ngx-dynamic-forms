@@ -1,32 +1,131 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import {
   FieldDefinition,
   FieldTypeRegistry,
   computeDependencyDepths,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { ButtonModule } from 'primeng/button';
-import { TooltipModule } from 'primeng/tooltip';
+import { NdfIcon } from '@n0n3br/ngx-dynamic-forms-core';
 import { FormBuilderStore } from './form-builder-store';
+
+interface CanvasRow {
+  field: FieldDefinition;
+  icon: string;
+  typeLabel: string;
+  depth: number;
+}
 
 /**
  * Design surface: one card per field, ordered top-to-bottom.
  * Dependent fields are indented under the fields they depend on
- * (depth = longest dependency chain), so conditional structure is visible
- * at a glance without reading any rules.
+ * (depth = longest dependency chain) with a guide line, so conditional
+ * structure is visible at a glance.
  */
 @Component({
   selector: 'ngx-builder-canvas',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FormsModule, ButtonModule, TooltipModule],
+  styles: `
+    :host { display: block; }
+    .canvas { display: flex; flex-direction: column; gap: 0.5rem; }
+    .canvas-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      text-align: center;
+      padding: 2.5rem 1rem;
+      border: 2px dashed var(--ndf-border-strong);
+      border-radius: 12px;
+    }
+    :host-context(.app-dark) .canvas-empty { border-color: var(--ndf-border); }
+    .canvas-empty i { font-size: 1.75rem; color: var(--ndf-border-strong); }
+    .canvas-empty p { margin: 0; }
+
+    .field-card {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--ndf-border);
+      background: var(--p-surface-0);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    :host-context(.app-dark) .field-card {
+      background: var(--ndf-surface);
+      border-color: var(--ndf-border);
+    }
+    .field-card:hover {
+      border-color: var(--p-primary-300);
+      background: color-mix(in srgb, var(--p-primary-500) 5%, transparent);
+    }
+    .field-card.selected {
+      border: 2px solid var(--p-primary-400);
+      background: color-mix(in srgb, var(--p-primary-500) 10%, transparent);
+    }
+    .field-card.is-hidden { border-style: dashed; opacity: 0.8; }
+
+    .depth-guide {
+      width: 4px;
+      min-height: 2rem;
+      border-radius: 2px;
+      flex-shrink: 0;
+      background: color-mix(in srgb, var(--p-primary-500) 45%, transparent);
+    }
+
+    .field-icon { font-size: 1rem; color: var(--p-primary-500); }
+    .field-main { min-width: 0; flex: 1; }
+    .field-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .field-name .untitled { font-weight: 400; font-style: italic; color: var(--ndf-text-faint); }
+    .field-required-star { color: var(--ndf-danger); }
+    .field-sub { font-size: 0.6875rem; color: var(--ndf-text-muted); display: flex; align-items: center; gap: 0.375rem; }
+
+    .badge {
+      display: inline-block;
+      padding: 0 0.4rem;
+      border-radius: 999px;
+      font-size: 0.625rem;
+      font-weight: 600;
+    }
+    .badge-conditional {
+      background: color-mix(in srgb, var(--p-primary-500) 15%, transparent);
+      color: var(--p-primary-600);
+    }
+    :host-context(.app-dark) .badge-conditional { color: var(--p-primary-300); }
+    .badge-hidden {
+      background: var(--ndf-border);
+      color: var(--ndf-text-muted);
+    }
+    :host-context(.app-dark) .badge-hidden { background: var(--ndf-border); }
+
+    .card-tools { display: flex; gap: 0.125rem; opacity: 0; transition: opacity 0.15s ease; }
+    .field-card:hover .card-tools { opacity: 1; }
+    .card-tool {
+      display: inline-flex;
+      border: none;
+      background: transparent;
+      padding: 0.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--ndf-text-muted);
+    }
+    .card-tool:hover { background: var(--ndf-surface-alt); color: var(--ndf-text); }
+  `,
+  imports: [NdfIcon],
   template: `
     @if (store.definition(); as def) {
-      <div class="flex flex-col gap-2" data-testid="builder-canvas">
+      <div class="canvas" data-testid="builder-canvas">
         @if (rows().length === 0) {
-          <div class="flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-surface-300 p-10 text-center dark:border-surface-700">
-            <i class="pi pi-plus-circle text-3xl text-surface-300"></i>
-            <p class="mb-0 mt-0 text-sm font-medium">Empty canvas</p>
-            <p class="m-0 text-xs text-surface-500">
+          <div class="canvas-empty">
+            <ndf-icon name="plus" style="--ndf-icon-size:1.75rem" />
+            <p style="font-size: 0.875rem; font-weight: 500">Empty canvas</p>
+            <p style="font-size: 0.75rem; color: var(--ndf-text-muted)">
               Add fields from the palette to start designing your form.
             </p>
           </div>
@@ -34,85 +133,57 @@ import { FormBuilderStore } from './form-builder-store';
 
         @for (row of rows(); track row.field.id) {
           <div
-            class="group flex items-center gap-3 rounded-lg border p-3 transition-colors"
-            [class]="cardClasses(row)"
+            class="field-card"
+            [class.selected]="isSelected(row.field.id)"
+            [class.is-hidden]="row.field.type === 'hidden'"
             [style.marginLeft.rem]="row.depth * 1.5"
             [attr.data-testid]="'canvas-field-' + row.field.id"
             [attr.data-depth]="row.depth"
             (click)="store.select(row.field.id)"
           >
-            <!-- indent guide line for dependent fields -->
             @if (row.depth > 0) {
-              <div class="h-full min-h-8 w-1 shrink-0 rounded bg-primary-300 dark:bg-primary-600"
-                   pTooltip="Depends on: {{ parentsOf(row.field.id) }}"
-                   tooltipPosition="top"></div>
+              <div
+                class="depth-guide"
+                [title]="'Depends on: ' + parentsOf(row.field.id)"
+              ></div>
             }
 
-            <i [class]="row.meta.icon + ' text-lg'" [class.text-surface-400]="!isSelected(row.field.id)"></i>
+            <ndf-icon class="field-icon" [name]="iconName(row.icon)" />
 
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-medium">
+            <div class="field-main">
+              <div class="field-name">
                 {{ row.field.label || row.field.id }}
                 @if (!row.field.label) {
-                  <span class="font-normal italic text-surface-400">(untitled)</span>
+                  <span class="untitled">(untitled)</span>
                 }
                 @if (row.field.required) {
-                  <span class="text-red-500">*</span>
+                  <span class="field-required-star">*</span>
                 }
               </div>
-              <div class="text-xs text-surface-400">
-                {{ row.meta.label }}
+              <div class="field-sub">
+                {{ row.typeLabel }}
                 @if (row.depth > 0) {
-                  <span class="ml-1 rounded-full bg-primary-100 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 dark:bg-primary-950 dark:text-primary-300">
-                    conditional
-                  </span>
+                  <span class="badge badge-conditional">conditional</span>
                 }
                 @if (row.field.type === 'hidden') {
-                  <span class="ml-1 rounded-full bg-surface-200 px-1.5 py-0.5 text-[10px] dark:bg-surface-700">
-                    hidden
-                  </span>
+                  <span class="badge badge-hidden">hidden</span>
                 }
               </div>
             </div>
 
-            <div class="flex shrink-0 gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-              <p-button
-                icon="pi pi-arrow-up"
-                variant="text"
-                size="small"
-                severity="secondary"
-                [rounded]="true"
-                pTooltip="Move up"
-                (onClick)="store.move(row.field.id, -1); $event.stopPropagation()"
-              />
-              <p-button
-                icon="pi pi-arrow-down"
-                variant="text"
-                size="small"
-                severity="secondary"
-                [rounded]="true"
-                pTooltip="Move down"
-                (onClick)="store.move(row.field.id, 1); $event.stopPropagation()"
-              />
-              <p-button
-                icon="pi pi-copy"
-                variant="text"
-                size="small"
-                severity="secondary"
-                [rounded]="true"
-                pTooltip="Duplicate"
-                (onClick)="store.duplicateField(row.field.id); $event.stopPropagation()"
-              />
-              <p-button
-                icon="pi pi-trash"
-                variant="text"
-                size="small"
-                severity="danger"
-                [rounded]="true"
-                pTooltip="Delete field"
-                [attr.data-testid]="'delete-' + row.field.id"
-                (onClick)="store.removeField(row.field.id); $event.stopPropagation()"
-              />
+            <div class="card-tools">
+              <button type="button" class="card-tool" title="Move up" (click)="store.move(row.field.id, -1); $event.stopPropagation()">
+                <ndf-icon name="arrow-up" />
+              </button>
+              <button type="button" class="card-tool" title="Move down" (click)="store.move(row.field.id, 1); $event.stopPropagation()">
+                <ndf-icon name="arrow-down" />
+              </button>
+              <button type="button" class="card-tool" title="Duplicate" (click)="store.duplicateField(row.field.id); $event.stopPropagation()">
+                <ndf-icon name="copy" />
+              </button>
+              <button type="button" class="card-tool" title="Delete field" (click)="store.removeField(row.field.id); $event.stopPropagation()">
+                <ndf-icon name="trash" />
+              </button>
             </div>
           </div>
         }
@@ -124,38 +195,25 @@ export class BuilderCanvas {
   readonly store = inject(FormBuilderStore);
   private readonly registry = inject(FieldTypeRegistry);
 
-  /** Canvas rows sorted by definition order with computed dependency depth. */
-  readonly rows = computed<
-    Array<{ field: FieldDefinition; meta: { icon: string; label: string }; depth: number }>
-  >(() => {
+  readonly rows = computed<CanvasRow[]>(() => {
     const def = this.store.definition();
     if (!def) return [];
     const depths = computeDependencyDepths(def.fields, def.dependencies);
     return def.fields.map((field) => ({
       field,
-      meta:
-        this.registry.get(field.type) ??
-        { icon: 'pi pi-question', label: field.type },
+      icon: this.registry.get(field.type)?.icon ?? 'pi pi-question',
+      typeLabel: this.registry.get(field.type)?.label ?? field.type,
       depth: depths.get(field.id) ?? 0,
     }));
   });
 
-  isSelected(id: string): boolean {
-    return this.store.selectedFieldId() === id;
+  /** Registry stores bare icon names; strip legacy "pi pi-" prefixes if present */
+  iconName(iconClass: string): string {
+    return iconClass.replace('pi pi-', '');
   }
 
-  cardClasses(row: {
-    field: FieldDefinition;
-    depth: number;
-  }): Record<string, boolean> {
-    const selected = this.isSelected(row.field.id);
-    return {
-      'cursor-pointer border-surface-200 hover:border-primary-300 hover:bg-primary-50/40 dark:border-surface-700 dark:hover:border-primary-600 dark:hover:bg-primary-950/40':
-        !selected,
-      'border-2 border-primary-400 bg-primary-50/60 dark:border-primary-500 dark:bg-primary-950/40':
-        selected,
-      'border border-dashed opacity-75': row.field.type === 'hidden',
-    };
+  isSelected(id: string): boolean {
+    return this.store.selectedFieldId() === id;
   }
 
   parentsOf(fieldId: string): string {

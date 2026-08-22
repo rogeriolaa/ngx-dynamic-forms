@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { FormControl } from '@angular/forms';
 import { FieldDefinition } from '../../models/field-definition';
 
 const MESSAGES: Record<string, string> = {
@@ -20,27 +20,49 @@ const MESSAGES: Record<string, string> = {
 @Component({
   selector: 'ngx-field-shell',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule],
+  styles: `
+    .shell-label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--p-text-color);
+    }
+    .shell-required {
+      color: var(--p-red-500);
+      margin-left: 2px;
+    }
+    .shell-control {
+      margin-top: 0.375rem;
+    }
+    .shell-help {
+      margin: 0.25rem 0 0;
+      font-size: 0.75rem;
+      color: var(--p-text-muted-color);
+    }
+    .shell-error {
+      margin: 0.25rem 0 0;
+      font-size: 0.75rem;
+      color: var(--p-red-500);
+    }
+  `,
   template: `
-    <label [for]="field().id" class="block text-sm font-medium text-surface-700 dark:text-surface-200">
+    <label class="shell-label" [for]="field().id">
       {{ field().label || field().id }}
       @if (field().required && field().type !== 'checkbox') {
-        <span class="text-red-500">*</span>
+        <span class="shell-required">*</span>
       }
     </label>
 
-    <div class="mt-1.5">
+    <div class="shell-control">
       <ng-content />
     </div>
 
-    @if (help()) {
-      <p class="mt-1 text-xs text-surface-500">{{ help() }}</p>
+    @if (help(); as helpText) {
+      <p class="shell-help">{{ helpText }}</p>
     }
 
     @if (errorMessage(); as message) {
-      <p class="mt-1 text-xs text-red-600" role="alert" [id]="field().id + '-error'">
-        {{ message }}
-      </p>
+      <p class="shell-error" role="alert" [id]="field().id + '-error'">{{ message }}</p>
     }
   `,
 })
@@ -59,9 +81,4 @@ export class FieldShell {
       (typeof control.errors[firstKey] === 'string' ? control.errors[firstKey] : 'Invalid value.')
     );
   });
-}
-
-/** Convenience accessor used by every concrete field to grab its shell context. */
-export function shellField(): FieldDefinition {
-  return inject(FieldShell).field();
 }

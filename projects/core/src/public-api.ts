@@ -20,7 +20,10 @@ export * from './lib/draft/merge-draft';
 export * from './lib/registry/field-types';
 export * from './lib/registry/field-type-registry';
 
-// Shared field runtime (FormGroup build + PrimeNG renderers)
+// Icon set (inline SVG, no icon-font dependency)
+export * from './lib/icons/ndf-icon';
+
+// Shared field runtime (FormGroup build + renderers)
 // Used by the responder AND the builder's live preview.
 export * from './lib/runtime/form-group-builder';
 export * from './lib/runtime/fields/field-shell';
@@ -34,3 +37,6 @@ export * from './lib/persistence/repository';
 export * from './lib/persistence/indexeddb-repository';
 export * from './lib/persistence/provide';
 export * from './lib/persistence/forms-service';
+
+// Test fixture builders (also handy for hosts writing their own specs)
+export * from './testing/definition-fixtures';

@@ -1,138 +1,99 @@
-<div class="flex flex-col gap-4">
-  <div class="flex flex-wrap items-center justify-between gap-2">
+<div>
+  <div class="page-title-row">
     <div>
-      <h1 class="m-0 text-2xl font-semibold">Forms</h1>
-      <p class="mb-0 mt-1 text-sm text-surface-500">
+      <h1>Forms</h1>
+      <p class="page-subtitle">
         Design conditional forms, answer them and inspect every submission.
       </p>
     </div>
     @if (perms().canDesign) {
-      <p-button
-        label="New form"
-        icon="pi pi-plus"
-        data-testid="new-form-btn"
-        (onClick)="showCreate.set(true)"
-      />
+      <button type="button" class="ndf-btn new-form-btn" data-testid="new-form-btn" (click)="showCreate.set(true)">
+        + New form
+      </button>
     }
   </div>
 
   @if (loading()) {
-    <p-card><p class="m-0 text-sm text-surface-400">Loading…</p></p-card>
+    <div class="ndf-card"><p class="muted-note" style="margin: 0">Loading…</p></div>
   } @else if (forms().length === 0) {
-    <p-card>
-      <div class="flex flex-col items-center gap-2 py-8 text-center">
-        <i class="pi pi-inbox text-3xl text-surface-300"></i>
-        <p class="m-0 text-sm font-medium">No forms yet</p>
-        <p class="m-0 text-xs text-surface-500">Create your first form to get started.</p>
+    <div class="ndf-card">
+      <div class="empty-state">
+        <span style="font-size: 1.75rem; opacity: 0.4">🗂</span>
+        <p style="font-size: 0.875rem; font-weight: 500">No forms yet</p>
+        <p class="muted-note">Create your first form to get started.</p>
       </div>
-    </p-card>
+    </div>
   } @else {
-    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" data-testid="form-list">
+    <div class="card-grid" data-testid="form-list">
       @for (form of forms(); track form.id + form.version) {
-        <p-card styleClass="h-full">
-          <div class="flex h-full flex-col gap-3">
-            <div class="flex items-start gap-2">
-              <i class="pi pi-file-edit mt-0.5 text-primary-500"></i>
-              <div class="min-w-0 flex-1">
-                <div class="truncate font-semibold">{{ form.title }}</div>
+        <div class="ndf-card">
+          <div class="form-card">
+            <div class="card-head">
+              <span class="form-icon">✎</span>
+              <div style="min-width: 0; flex: 1">
+                <div class="card-title">{{ form.title }}</div>
                 @if (form.description) {
-                  <div class="truncate text-xs text-surface-500">{{ form.description }}</div>
+                  <div class="card-desc">{{ form.description }}</div>
                 }
               </div>
-              <p-tag
-                [value]="form.status"
-                [severity]="statusSeverity(form.status)"
-                [rounded]="true"
-              />
+              <span
+                class="ndf-badge"
+                [class]="statusSeverity(form.status)"
+              >{{ form.status }}</span>
             </div>
 
-            <div class="text-xs text-surface-400">
+            <div class="card-meta">
               v{{ form.version }} · {{ form.fields.length }} fields ·
               {{ form.dependencies.length }} rule(s) ·
               updated {{ form.updatedAt | date: 'MMM d, HH:mm' }}
             </div>
 
-            <div class="mt-auto flex flex-wrap items-center gap-1.5 pt-1">
+            <div class="card-actions">
               @if (perms().canDesign) {
-                <p-button routerLink="/builder/{{ form.id }}" 
-                    label="Design"
-                    icon="pi pi-pencil"
-                    size="small"
-                    variant="outlined"
-                    [attr.data-testid]="'design-' + form.id"
-                  />
-                
+                <a class="ndf-btn ndf-btn--secondary ndf-btn--sm" [routerLink]="['/builder', form.id]"
+                   [attr.data-testid]="'design-' + form.id">Design</a>
               }
               @if (perms().canAnswer && form.status === 'published') {
-                <p-button routerLink="/answer/{{ form.id }}" 
-                    label="Answer"
-                    icon="pi pi-send"
-                    size="small"
-                    severity="success"
-                    variant="outlined"
-                    [attr.data-testid]="'answer-' + form.id"
-                  />
-                
+                <a class="ndf-btn ndf-btn--sm" style="background: var(--ndf-success); color: #fff"
+                   [routerLink]="['/answer', form.id]"
+                   [attr.data-testid]="'answer-' + form.id">Answer</a>
               }
               @if (perms().canView) {
-                <p-button routerLink="/responses/{{ form.id }}" 
-                    label="Responses"
-                    icon="pi pi-list"
-                    size="small"
-                    severity="secondary"
-                    variant="outlined"
-                  />
-                
+                <a class="ndf-btn ndf-btn--secondary ndf-btn--sm" [routerLink]="['/responses', form.id]">Responses</a>
               }
               @if (perms().canDesign) {
-                <span class="ml-auto flex gap-0.5">
-                  <p-button
-                    icon="pi pi-copy"
-                    size="small"
-                    variant="text"
-                    severity="secondary"
-                    pTooltip="Duplicate"
-                    (onClick)="duplicate(form)"
-                  />
-                  <p-button
-                    icon="pi pi-archive"
-                    size="small"
-                    variant="text"
-                    severity="danger"
-                    pTooltip="Archive"
-                    (onClick)="archive(form)"
-                  />
+                <span class="card-actions-spacer">
+                  <button type="button" class="icon-btn" title="Duplicate" (click)="duplicate(form)">⧉</button>
+                  <button type="button" class="icon-btn danger" title="Archive" (click)="archive(form)">🗄</button>
                 </span>
               }
             </div>
           </div>
-        </p-card>
+        </div>
       }
     </div>
   }
 </div>
 
-<p-dialog
-  [visible]="showCreate()"
-  [modal]="true"
-  header="New form"
-  [style]="{ width: '22rem' }"
-  (onHide)="showCreate.set(false)"
->
-  <label class="mb-1 block text-xs font-medium text-surface-500">Title</label>
-  <input
-    pInputText
-    [ngModel]="newTitle()"
-    (ngModelChange)="newTitle.set($event)"
-    class="w-full"
-    placeholder="Quarterly survey…"
-    data-testid="new-form-title"
-    (keydown.enter)="create()"
-  />
-  <ng-template #footer>
-    <div class="flex justify-end gap-2">
-      <p-button label="Cancel" size="small" variant="text" (onClick)="showCreate.set(false)" />
-      <p-button label="Create & design" size="small" data-testid="create-confirm" (onClick)="create()" />
+@if (showCreate()) {
+  <div class="modal-backdrop" (click)="showCreate.set(false)">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <h3>New form</h3>
+      <label class="field-label">Title</label>
+      <input
+        class="ndf-input"
+        [ngModel]="newTitle()"
+        (ngModelChange)="newTitle.set($event)"
+        placeholder="Quarterly survey…"
+        data-testid="new-form-title"
+        (keydown.enter)="create()"
+      />
+      <div class="dialog-actions">
+        <button type="button" class="ndf-btn ndf-btn--secondary" (click)="showCreate.set(false)">Cancel</button>
+        <button type="button" class="ndf-btn" data-testid="create-confirm" (click)="create()">
+          Create & design
+        </button>
+      </div>
     </div>
-  </ng-template>
-</p-dialog>
+  </div>
+}

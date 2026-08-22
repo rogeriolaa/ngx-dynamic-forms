@@ -1,153 +1,140 @@
 @switch (status()) {
   @case ('loading') {
-    <div class="flex justify-center p-10">
-      <p-progressspinner />
+    <div style="display: flex; justify-content: center; padding: 2.5rem 0">
+      <span class="ndf-spinner"></span>
     </div>
   }
   @case ('blocked') {
-    <p-card data-testid="builder-blocked">
-      <div class="flex flex-col items-center gap-3 py-8 text-center">
-        <i class="pi pi-lock text-4xl text-surface-400"></i>
-        <h3 class="m-0 text-lg font-semibold">Not authorized</h3>
-        <p class="m-0 text-sm text-surface-500">
-          You don't have permission to design this form.
-        </p>
+    <div class="ndf-card" data-testid="builder-blocked">
+      <div class="state-card">
+        <ndf-icon name="lock" style="--ndf-icon-size: 2.25rem" />
+        <h3>Not authorized</h3>
+        <p>You don't have permission to design this form.</p>
       </div>
-    </p-card>
+    </div>
   }
   @case ('missing') {
-    <p-card data-testid="builder-missing">
-      <div class="flex flex-col items-center gap-3 py-8 text-center">
-        <i class="pi pi-file-excel text-4xl text-surface-400"></i>
-        <h3 class="m-0 text-lg font-semibold">Form not found</h3>
-        <p class="m-0 text-sm text-surface-500">Check the form id or create the form first.</p>
+    <div class="ndf-card" data-testid="builder-missing">
+      <div class="state-card">
+        <ndf-icon name="warning" style="--ndf-icon-size: 2.25rem" />
+        <h3>Form not found</h3>
+        <p>Check the form id or create the form first.</p>
       </div>
-    </p-card>
+    </div>
   }
   @case ('ready') {
     @if (store.definition(); as def) {
-      <div class="flex flex-col" data-testid="form-builder">
+      <div class="builder" data-testid="form-builder">
         <!-- ===== header ===== -->
-        <header class="flex flex-wrap items-center gap-2 border-b border-surface-200 px-1 pb-3 dark:border-surface-700">
+        <header class="builder-header">
           <input
-            pInputText
+            class="ndf-input title-input"
             [ngModel]="def.title"
             (ngModelChange)="store.patchDefinition({ title: $event })"
             placeholder="Untitled form"
-            class="min-w-48 flex-1 font-semibold"
-            size="small"
-            [attr.data-testid]="'form-title-input'"
           />
 
-          <span class="rounded-full bg-surface-200 px-2 py-1 text-[11px] font-medium dark:bg-surface-700">
+          <span class="version-chip">
             {{ def.status === 'draft' ? 'editing draft v' + def.version : 'v' + def.version }}
           </span>
 
-          <div class="flex items-center gap-1.5">
-            <!-- validation issues -->
+          <div class="header-actions">
             @if (errors().length > 0) {
-              <p-button
-                [label]="'' + errors().length"
-                icon="pi pi-exclamation-triangle"
-                severity="danger"
-                variant="outlined"
-                size="small"
-                pTooltip="{{ errors().length }} blocking issue(s)"
+              <button
+                type="button"
+                class="ndf-btn ndf-btn--danger ndf-btn--sm"
+                pTitle
+                [title]="errors().length + ' blocking issue(s)'"
                 data-testid="issues-btn"
-                (onClick)="showIssues.set(!showIssues())"
-              />
+                (click)="showIssues.set(!showIssues())"
+              >
+                {{ errors().length }}
+                <ndf-icon name="warning" />
+              </button>
             }
 
-            <!-- import/export -->
-            <p-button
-              icon="pi pi-file-import"
-              severity="secondary"
-              variant="text"
-              size="small"
-              pTooltip="Import / export JSON"
-              (onClick)="showImportExport.set(true)"
-            />
+            <button
+              type="button"
+              class="ndf-btn ndf-btn--ghost ndf-btn--icon"
+              title="Import / export JSON"
+              (click)="showImportExport.set(true)"
+            >
+              <ndf-icon name="download" />
+            </button>
 
-            <!-- versions -->
             @if (canPersist()) {
-              <p-button
-                icon="pi pi-history"
-                severity="secondary"
-                variant="text"
-                size="small"
-                pTooltip="Versions & publish"
+              <button
+                type="button"
+                class="ndf-btn ndf-btn--ghost ndf-btn--icon"
+                title="Versions & publish"
                 data-testid="versions-btn"
-                (onClick)="showVersions.set(true)"
-              />
+                (click)="showVersions.set(true)"
+              >
+                <ndf-icon name="history" />
+              </button>
             }
 
-            <!-- preview toggle -->
-            <p-button
-              [label]="store.previewMode() ? 'Design' : 'Preview'"
-              [icon]="store.previewMode() ? 'pi pi-pencil' : 'pi pi-eye'"
-              [severity]="store.previewMode() ? 'secondary' : 'help'"
-              [variant]="store.previewMode() ? 'outlined' : 'text'"
-              size="small"
+            <button
+              type="button"
+              class="ndf-btn ndf-btn--secondary"
               data-testid="preview-toggle"
-              (onClick)="togglePreview()"
-            />
+              (click)="togglePreview()"
+            >
+              @if (store.previewMode()) {
+                <ndf-icon name="pencil" /> Design
+              } @else {
+                <ndf-icon name="eye" /> Preview
+              }
+            </button>
 
-            <p-button
-              label="Save"
-              icon="pi pi-save"
-              size="small"
-              [loading]="saving()"
+            <button
+              type="button"
+              class="ndf-btn"
+              [disabled]="saving()"
               data-testid="save-btn"
-              (onClick)="save()"
-            />
-            <p-button
-              icon="pi pi-times"
-              severity="secondary"
-              variant="text"
-              size="small"
-              pTooltip="Close designer"
-              (onClick)="doCancel()"
-            />
+              (click)="save()"
+            >
+              <ndf-icon name="save" /> {{ saving() ? 'Saving…' : 'Save' }}
+            </button>
+            <button type="button" class="icon-btn" title="Close designer" (click)="doCancel()">
+              <ndf-icon name="x" />
+            </button>
           </div>
         </header>
 
         <!-- save feedback -->
         @if (lastSaveInfo(); as info) {
-          <p-message class="mt-2" severity="success" [closable]="false" data-testid="save-success">{{ info }}</p-message>
+          <div class="feedback ndf-alert ndf-alert--success" data-testid="save-success">{{ info }}</div>
         }
         @if (saveError(); as error) {
-          <p-message class="mt-2" severity="error" [closable]="false" data-testid="save-error">{{ error }}</p-message>
+          <div class="feedback ndf-alert ndf-alert--error" data-testid="save-error">{{ error }}</div>
         }
 
         <!-- issues panel -->
         @if (showIssues() && issues().length > 0) {
-          <div class="mt-2 rounded-lg border border-surface-200 p-3 dark:border-surface-700" data-testid="issues-panel">
-            <p class="mb-2 mt-0 text-xs font-semibold uppercase tracking-wide text-surface-400">
-              Validation
-            </p>
+          <div class="issues-panel" data-testid="issues-panel">
+            <p class="issues-title">Validation</p>
             @for (issue of issues(); track issue.message) {
-              <div class="mb-1 flex items-start gap-2 text-sm">
-                <i
-                  [class]="issue.severity === 'error' ? 'pi pi-times-circle text-red-500' : 'pi pi-exclamation-circle text-amber-500'"
-                  class="mt-0.5 text-xs"
-                ></i>
+              <div class="issue-row">
+                <ndf-icon
+                  [name]="issue.severity === 'error' ? 'x' : 'warning'"
+                  [style.color]="issue.severity === 'error' ? 'var(--ndf-danger)' : 'var(--ndf-warning)'"
+                />
                 <span>{{ issue.message }}</span>
               </div>
             }
           </div>
         }
 
-        <!-- ===== body: palette | canvas/preview | properties ===== -->
-        <div class="mt-3 grid grid-cols-12 gap-4">
-          <!-- palette -->
+        <!-- ===== body ===== -->
+        <div class="builder-body" [class.design]="!store.previewMode()" [class.previewing]="store.previewMode()">
           @if (!store.previewMode()) {
-            <aside class="col-span-12 md:col-span-2 lg:col-span-2">
+            <aside>
               <ngx-builder-palette />
             </aside>
           }
 
-          <!-- canvas or live preview -->
-          <main [class.col-span-12]="true" [class.md:col-span-7]="!store.previewMode()" [class.lg:col-span-7]="!store.previewMode()" [class.md:col-span-9]="store.previewMode()">
+          <main>
             @if (store.previewMode()) {
               <ngx-builder-preview [definition]="def" />
             } @else {
@@ -155,23 +142,19 @@
             }
           </main>
 
-          <!-- properties -->
           @if (!store.previewMode()) {
-            <aside class="col-span-12 md:col-span-3">
+            <aside>
               @if (store.selectedFieldId()) {
-                <div class="rounded-xl border border-surface-200 dark:border-surface-700">
+                <div class="properties-frame">
                   <ngx-property-panel
                     [dependencies]="def.dependencies"
                     (dependenciesChange)="onDependenciesChange($event)"
                   />
                 </div>
               } @else {
-                <div class="rounded-xl border border-dashed border-surface-300 p-6 text-center dark:border-surface-700">
-                  <i class="pi pi-sliders-h text-2xl text-surface-300"></i>
-                  <p class="mb-0 mt-2 text-sm">Select a field to edit</p>
-                  <p class="m-0 text-xs text-surface-500">
-                    Click any card on the canvas to configure it.
-                  </p>
+                <div class="empty-properties">
+                  <p>Select a field to edit</p>
+                  <p>Click any card on the canvas to configure it.</p>
                 </div>
               }
             </aside>
@@ -180,47 +163,39 @@
 
         <!-- ===== dialogs ===== -->
         @if (showVersions()) {
-          <p-dialog
-            [visible]="true"
-            [modal]="true"
-            header="Versions & publish"
-            [style]="{ width: '24rem' }"
-            (onHide)="showVersions.set(false)"
-          >
-            <ngx-version-history
-              [formId]="def.id"
-              [currentVersion]="def.version"
-              [isDraft]="def.status === 'draft'"
-              (published)="published.emit($any(def)); showVersions.set(false); save()"
-            />
-            <ng-template #footer>
-              <p-button label="Close" size="small" variant="text" (onClick)="showVersions.set(false)" />
-            </ng-template>
-          </p-dialog>
+          <div class="modal-backdrop" (click)="showVersions.set(false)">
+            <div class="modal" (click)="$event.stopPropagation()">
+              <h3>Versions & publish</h3>
+              <ngx-version-history
+                [formId]="def.id"
+                [currentVersion]="def.version"
+                [isDraft]="def.status === 'draft'"
+                (published)="published.emit($any(def)); showVersions.set(false); save()"
+              />
+              <div class="dialog-actions">
+                <button type="button" class="ndf-btn ndf-btn--secondary" (click)="showVersions.set(false)">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         }
 
         @if (showImportExport()) {
-          <p-dialog
-            [visible]="true"
-            [modal]="true"
-            header="Import / export definition"
-            [style]="{ width: '34rem' }"
-            (onHide)="showImportExport.set(false)"
-          >
-            <textarea
-              pTextarea
-              #jsonArea
-              class="w-full font-mono text-xs"
-              [rows]="12"
-              [value]="exportJson()"
-            ></textarea>
-            <ng-template #footer>
-              <div class="flex w-full justify-between gap-2">
-                <p-button label="Download .json" icon="pi pi-download" size="small" variant="outlined" (onClick)="downloadJson()" />
-                <p-button label="Import from textarea" icon="pi pi-upload" size="small" (onClick)="importJson(jsonArea.value)" />
+          <div class="modal-backdrop" (click)="showImportExport.set(false)">
+            <div class="modal wide" (click)="$event.stopPropagation()">
+              <h3>Import / export definition</h3>
+              <textarea #jsonArea class="ndf-textarea json-area" rows="12" [value]="exportJson()"></textarea>
+              <div class="dialog-actions split">
+                <button type="button" class="ndf-btn ndf-btn--secondary" (click)="downloadJson()">
+                  <ndf-icon name="download" /> Download .json
+                </button>
+                <button type="button" class="ndf-btn" (click)="importJson(jsonArea.value)">
+                  <ndf-icon name="upload" /> Import from textarea
+                </button>
               </div>
-            </ng-template>
-          </p-dialog>
+            </div>
+          </div>
         }
       </div>
     }

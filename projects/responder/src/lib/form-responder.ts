@@ -27,16 +27,14 @@ import {
   ResolvedPermissions,
   DraftMergeReport,
   buildFormGroup,
+  computeDependencyDepths,
   deserializeValues,
+  initialValueFor,
   mergeDraftValues,
   resolvePermissions,
   serializeValues,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { DialogModule } from 'primeng/dialog';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { MessageModule } from 'primeng/message';
+import { NdfIcon } from '@n0n3br/ngx-dynamic-forms-core';
 
 type ResponderStatus = 'loading' | 'ready' | 'blocked' | 'missing' | 'submitted';
 
@@ -66,16 +64,69 @@ interface DraftPromptData {
 @Component({
   selector: 'ngx-form-responder',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    ReactiveFormsModule,
-    FieldHost,
-    ButtonModule,
-    CardModule,
-    DialogModule,
-    ProgressSpinnerModule,
-    MessageModule,
-  ],
+  imports: [ReactiveFormsModule, FieldHost, NdfIcon],
   providers: [NgxFormsService],
+  styles: `
+    .responder-loading { display: flex; justify-content: center; padding: 2.5rem 0; }
+    .responder-form { display: flex; flex-direction: column; gap: 1.25rem; }
+    .form-head h2 { margin: 0; font-size: 1.25rem; }
+    .form-desc { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
+    .form-version { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--ndf-text-muted); }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .field-cell { grid-column: span 12; }
+    .section-cell {
+      grid-column: 1 / -1;
+      border-bottom: 1px solid var(--ndf-border);
+      padding-top: 0.5rem;
+      padding-bottom: 0.25rem;
+    }
+    :host-context(.app-dark) .section-cell { border-bottom-color: var(--ndf-border); }
+    .section-title {
+      margin: 0.25rem 0 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--p-text-color);
+    }
+
+    .form-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      border-top: 1px solid var(--ndf-border);
+      padding-top: 1rem;
+    }
+    :host-context(.app-dark) .form-footer { border-top-color: var(--ndf-border); }
+    .autosave-state { font-size: 0.75rem; color: var(--ndf-text-muted); }
+    .footer-actions { display: flex; gap: 0.5rem; }
+
+    .state-card { text-align: center; padding: 2rem 0; }
+    .state-card i { font-size: 2.5rem; color: var(--p-surface-400); }
+    .state-card h3 { margin: 0.75rem 0 0; font-size: 1.05rem; }
+    .state-card p { margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
+    .state-icon-success { color: var(--ndf-success) !important; font-size: 3rem !important; }
+
+    .merge-warning {
+      margin-top: 0.75rem;
+      padding: 0.5rem 0.625rem;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(var(--ndf-warning));
+      background: var(var(--ndf-warning-soft));
+      color: var(var(--ndf-warning));
+    }
+    :host-context(.app-dark) .merge-warning {
+      background: color-mix(in srgb, var(var(--ndf-warning-soft)0) 12%, transparent);
+      border-color: var(var(--ndf-warning));
+      color: var(var(--ndf-warning));
+    }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+  `,
   templateUrl: './form-responder.html',
 })
 export class FormResponder {
@@ -117,6 +168,10 @@ export class FormResponder {
   private autoSaveSub: Subscription | null = null;
   private staticallyDisabled = new Set<string>();
   private activeDraftId: string | null = null;
+  /** Guards against redundant full re-initialization on input-reference churn. */
+  private initializedKey: string | null = null;
+  /** Assigned by setupDefinition — re-applies hide/disable + value resets. */
+  private syncHiddenControls: () => void = () => {};
 
   constructor() {
     effect(() => void this.initialize());
@@ -148,7 +203,16 @@ export class FormResponder {
         return;
       }
 
+      // Same form+version already mounted → input churn (e.g. parent passing
+      // a fresh object each CD pass); rebuilding would wipe user input.
+      const key = `${resolved.id}@${resolved.version}`;
+      if (this.status() === 'ready' && this.initializedKey === key) {
+        this.definitionState.set(resolved);
+        return;
+      }
+
       this.setupDefinition(resolved);
+      this.initializedKey = key;
       this.status.set('ready');
       await this.checkForDraft();
     } catch {
@@ -175,10 +239,25 @@ export class FormResponder {
       for (const [fieldId, control] of Object.entries(group.controls)) {
         if (this.staticallyDisabled.has(fieldId)) continue;
         const hiddenByRule = this.engine?.isHidden(fieldId) ?? false;
-        if (hiddenByRule && control.enabled) control.disable({ emitEvent: false });
-        else if (!hiddenByRule && control.disabled) control.enable({ emitEvent: false });
+        if (hiddenByRule && control.enabled) {
+          control.disable({ emitEvent: false });
+          // Reset the stale value (emitting) so DOWNSTREAM rules that read
+          // this field re-evaluate — otherwise a chain A→B→C keeps C visible
+          // after B was hidden, because B still holds its old answer.
+          const field = this.definitionState()?.fields.find((f) => f.id === fieldId);
+          if (
+            field &&
+            JSON.stringify(control.value) !== JSON.stringify(initialValueFor(field))
+          ) {
+            control.setValue(initialValueFor(field));
+          }
+        } else if (!hiddenByRule && control.disabled) {
+          control.enable({ emitEvent: false });
+        }
       }
     };
+    // exposed for post-patch flows (draft restore) that bypass valueChanges
+    this.syncHiddenControls = syncDisabledState;
     syncDisabledState();
 
     this.autoSaveSub?.unsubscribe();
@@ -216,6 +295,13 @@ export class FormResponder {
 
   readonly canPersist = computed(() => !!this.responsesRepo && !!this.definitionState());
 
+  /** Submit stays disabled while any visible field fails its validators. */
+  readonly canSubmit = computed(() => {
+    const group = this.form();
+    if (!group) return false;
+    return Object.values(group.controls).every((control) => control.disabled || control.valid);
+  });
+
   readonly saveStateLabel = computed(() => {
     switch (this.saveState()) {
       case 'saving':
@@ -233,9 +319,50 @@ export class FormResponder {
     return this.engine?.isHidden(fieldId) ?? false;
   }
 
-  columnClass(field: FieldDefinition): string {
-    return `col-span-${Math.min(12, Math.max(3, field.columns ?? 12))}`;
+  /** Dependency-chain depth — drives the visual indentation of nested fields. */
+  readonly fieldDepths = computed(() => {
+    const def = this.definitionState();
+    return def ? computeDependencyDepths(def.fields, def.dependencies) : new Map<string, number>();
+  });
+
+  depthOf(fieldId: string): number {
+    return this.fieldDepths().get(fieldId) ?? 0;
   }
+
+  columnSpan(field: FieldDefinition): number {
+    return Math.min(12, Math.max(3, field.columns ?? 12));
+  }
+
+  /**
+   * Layout rows: an independent field that FOLLOWS an indented chain is
+   * forced to restart at grid column 1, so it realigns with the root
+   * ("father") level instead of trailing the nested block.
+   */
+  readonly layoutRows = computed(() => {
+    const def = this.definitionState();
+    if (!def) return [];
+    const excluded = this.excludeFieldTypes();
+    const rows: Array<{
+      field: FieldDefinition;
+      depth: number;
+      span: number;
+      restartAtRoot: boolean;
+    }> = [];
+    let previousDepth = 0;
+    for (const field of def.fields) {
+      const depth = this.fieldDepths().get(field.id) ?? 0;
+      const isSection = field.type === 'section';
+      const excludedField = field.type === 'hidden' || excluded.includes(field.type);
+      rows.push({
+        field,
+        depth,
+        span: isSection ? 12 : this.columnSpan(field),
+        restartAtRoot: !isSection && !excludedField && depth === 0 && previousDepth > 0,
+      });
+      previousDepth = isSection || excludedField ? 0 : depth;
+    }
+    return rows;
+  });
 
   droppedList(prompt: DraftPromptData): string {
     return prompt.report.dropped.map((d) => d.fieldId).join(', ') || 'none';
@@ -267,6 +394,10 @@ export class FormResponder {
     this.form()!.patchValue(deserializeValues(def, prompt.values), {
       emitEvent: false,
     });
+    // patching silently skips valueChanges — re-run the engine + visibility
+    // sync so conditional fields reflect the restored answers immediately.
+    this.engine?.reevaluate();
+    this.syncHiddenControls();
     this.draftPrompt.set(null);
   }
 

@@ -1,25 +1,22 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { FieldDefinition } from '../../models/field-definition';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { DatePickerModule } from 'primeng/datepicker';
-import { SliderModule } from 'primeng/slider';
 import { FieldShell } from './field-shell';
 
 @Component({
   selector: 'ngx-number-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, InputNumberModule],
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <p-inputnumber
-        [inputId]="field().id"
-        class="w-full"
-        [min]="field().min"
-        [max]="field().max"
+      <input
+        class="ndf-input"
+        [id]="field().id"
+        type="number"
+        [min]="field().min ?? null"
+        [max]="field().max ?? null"
         [step]="field().step ?? 1"
         [formControl]="control()"
-        [useGrouping]="false"
       />
     </ngx-field-shell>
   `,
@@ -32,16 +29,14 @@ export class NumberField {
 @Component({
   selector: 'ngx-date-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, DatePickerModule],
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <p-datepicker
-        [inputId]="field().id"
-        class="w-full"
-        [showIcon]="true"
-        [dateFormat]="'yy-mm-dd'"
+      <input
+        class="ndf-input"
+        [id]="field().id"
+        type="date"
         [formControl]="control()"
-        [placeholder]="field().placeholder ?? ''"
       />
     </ngx-field-shell>
   `,
@@ -54,21 +49,38 @@ export class DateField {
 @Component({
   selector: 'ngx-slider-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, SliderModule],
+  styles: `
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    input[type='range'] {
+      flex: 1;
+      accent-color: var(--ndf-primary);
+    }
+    .slider-value {
+      min-width: 3rem;
+      text-align: right;
+      font-size: 0.875rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--ndf-text-muted);
+    }
+  `,
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <div class="flex items-center gap-4">
-        <p-slider
-          class="w-full"
-          [range]="false"
+      <div class="slider-row">
+        <input
+          type="range"
+          [id]="field().id"
           [min]="field().min ?? 0"
           [max]="field().max ?? 100"
           [step]="field().step ?? 1"
           [formControl]="control()"
         />
-        <span class="w-12 text-right text-sm tabular-nums text-surface-600">
-          {{ control().value ?? '–' }}
-        </span>
+        <span class="slider-value">{{ control().value ?? '–' }}</span>
       </div>
     </ngx-field-shell>
   `,
@@ -81,23 +93,41 @@ export class SliderField {
 @Component({
   selector: 'ngx-rating-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    :host { display: block; }
+    .stars {
+      display: flex;
+      gap: 0.25rem;
+      margin-top: 0.5rem;
+    }
+    .star-btn {
+      border: none;
+      background: transparent;
+      padding: 0;
+      font-size: 1.5rem;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--ndf-border-strong);
+      transition: color 0.15s ease;
+    }
+    .star-btn.on {
+      color: var(--ndf-warning);
+    }
+    .star-btn:disabled { cursor: default; }
+  `,
   imports: [FieldShell],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <div
-        class="flex gap-1"
-        role="radiogroup"
-        [attr.aria-label]="field().label"
-      >
+      <div class="stars" role="radiogroup" [attr.aria-label]="field().label">
         @for (star of stars(); track star) {
           <button
             type="button"
-            class="border-none bg-transparent p-0 text-2xl leading-none cursor-pointer transition-colors"
-            [class.text-amber-400]="(control().value ?? 0) >= star"
-            [class.text-surface-300]="(control().value ?? 0) < star"
+            class="star-btn"
+            [class.on]="(control().value ?? 0) >= star"
             (click)="select(star)"
-            [attr.aria-checked]="control().value === star"
             role="radio"
+            [attr.aria-checked]="control().value === star"
+            [disabled]="control().disabled"
           >
             ★
           </button>

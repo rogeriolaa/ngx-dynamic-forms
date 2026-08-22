@@ -20,7 +20,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'text',
     label: 'Short text',
-    icon: 'pi pi-pencil',
+    icon: 'pencil',
     category: 'input',
     supportsOptions: false,
     defaultConfig: {},
@@ -28,7 +28,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'textarea',
     label: 'Long text',
-    icon: 'pi pi-align-left',
+    icon: 'align-left',
     category: 'input',
     supportsOptions: false,
     defaultConfig: { rows: 4 },
@@ -36,7 +36,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'number',
     label: 'Number',
-    icon: 'pi pi-hashtag',
+    icon: 'hashtag',
     category: 'input',
     supportsOptions: false,
     defaultConfig: {},
@@ -44,7 +44,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'email',
     label: 'Email',
-    icon: 'pi pi-envelope',
+    icon: 'send',
     category: 'input',
     supportsOptions: false,
     defaultConfig: {},
@@ -52,7 +52,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'date',
     label: 'Date',
-    icon: 'pi pi-calendar',
+    icon: 'calendar',
     category: 'input',
     supportsOptions: false,
     defaultConfig: {},
@@ -60,7 +60,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'dropdown',
     label: 'Dropdown',
-    icon: 'pi pi-chevron-down',
+    icon: 'chevron-down',
     category: 'input',
     supportsOptions: true,
     defaultConfig: {
@@ -73,7 +73,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'multi-select',
     label: 'Multi select',
-    icon: 'pi pi-list',
+    icon: 'arrows-h',
     category: 'input',
     supportsOptions: true,
     defaultConfig: {
@@ -86,7 +86,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'radio',
     label: 'Radio group',
-    icon: 'pi pi-circle-fill',
+    icon: 'circle',
     category: 'input',
     supportsOptions: true,
     defaultConfig: {
@@ -99,7 +99,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'checkbox',
     label: 'Checkbox',
-    icon: 'pi pi-check-square',
+    icon: 'check',
     category: 'input',
     supportsOptions: false,
     defaultConfig: { defaultValue: false },
@@ -107,7 +107,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'checkbox-group',
     label: 'Checkbox group',
-    icon: 'pi pi-check-square',
+    icon: 'list',
     category: 'input',
     supportsOptions: true,
     defaultConfig: {
@@ -120,7 +120,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'rating',
     label: 'Rating',
-    icon: 'pi pi-star',
+    icon: 'star',
     category: 'input',
     supportsOptions: false,
     defaultConfig: { max: 5 },
@@ -128,7 +128,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'slider',
     label: 'Slider',
-    icon: 'pi pi-arrows-h',
+    icon: 'arrows-h',
     category: 'input',
     supportsOptions: false,
     defaultConfig: { min: 0, max: 100, step: 1 },
@@ -136,7 +136,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'section',
     label: 'Section header',
-    icon: 'pi pi-minus',
+    icon: 'minus',
     category: 'layout',
     supportsOptions: false,
     defaultConfig: {},
@@ -144,7 +144,7 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
   {
     type: 'hidden',
     label: 'Hidden field',
-    icon: 'pi pi-eye-slash',
+    icon: 'eye-slash',
     category: 'hidden',
     supportsOptions: false,
     defaultConfig: {},

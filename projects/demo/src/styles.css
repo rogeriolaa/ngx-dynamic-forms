@@ -1,13 +1,10 @@
-/* Layer order: Tailwind base < PrimeNG < Tailwind utilities.
-   Utilities always win over PrimeNG component styles; PrimeNG design
-   tokens stay untouched by Tailwind preflight. */
-@layer tailwind-base, primeng, tailwind-utilities;
+/* Demo global styles.
+ * The library ships ONE compiled stylesheet (Tailwind utilities + the
+ * `--ndf-*` design-token sheet) at @n0n3br/ngx-dynamic-forms-core/styles.css.
+ * Hosts restyle everything by overriding tokens on :root — see the accent
+ * picker in the header of this demo. */
 
-@import 'tailwindcss/theme.css' layer(tailwind-base);
-@import 'tailwindcss/utilities.css' layer(tailwind-utilities);
-@import 'primeicons/primeicons.css';
-
-@plugin 'tailwindcss-primeui';
+@import '../../../dist/core/styles.css';
 
 html,
 body {
@@ -16,11 +13,209 @@ body {
 
 body {
   margin: 0;
-  font-family: var(--font-family);
-  background: var(--p-surface-50);
-  color: var(--p-text-color);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: var(--ndf-bg);
+  color: var(--ndf-text);
 }
 
-.app-dark body {
-  background: var(--p-surface-950);
+/* ---- app shell ---- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--ndf-surface);
+  border-bottom: 1px solid var(--ndf-border);
 }
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ndf-text);
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 6px;
+  background: var(--ndf-primary);
+  color: var(--ndf-primary-contrast);
+  font-size: 0.8rem;
+}
+
+.app-header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-header-hint {
+  font-size: 0.75rem;
+  color: var(--ndf-text-muted);
+}
+
+.accent-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--ndf-text-muted);
+}
+
+.accent-picker input[type='color'] {
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: 1px solid var(--ndf-border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+.icon-btn {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--ndf-text-muted);
+}
+.icon-btn:hover { background: var(--ndf-surface-alt); color: var(--ndf-text); }
+.icon-btn.danger:hover { color: var(--ndf-danger); }
+
+.app-main {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+/* ---- shared page patterns ---- */
+.page-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.page-title-row h1 { margin: 0; font-size: 1.4rem; }
+
+.page-subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ndf-text-muted);
+}
+
+.field-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--ndf-text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+  gap: 0.75rem;
+}
+
+.form-card { display: flex; flex-direction: column; gap: 0.75rem; height: 100%; }
+
+.card-head { display: flex; align-items: flex-start; gap: 0.5rem; }
+.card-head > span:first-child { color: var(--ndf-primary); margin-top: 0.15rem; }
+
+.card-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-desc { font-size: 0.75rem; color: var(--ndf-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-meta { font-size: 0.75rem; color: var(--ndf-text-muted); }
+
+.card-actions {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  padding-top: 0.25rem;
+}
+.card-actions a { text-decoration: none; }
+.card-actions-spacer { margin-left: auto; display: flex; gap: 0.125rem; }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+  padding: 2.5rem 1rem;
+}
+.empty-state p { margin: 0; }
+
+.muted-note { color: var(--ndf-text-muted); font-size: 0.875rem; }
+
+/* ---- modals ---- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 45%);
+}
+.modal {
+  width: min(24rem, 92vw);
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: var(--ndf-surface);
+  border: 1px solid var(--ndf-border);
+}
+.modal h3 { margin: 0 0 0.75rem; font-size: 1.05rem; color: var(--ndf-text); }
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.back-link {
+  color: var(--ndf-primary);
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+.back-link:hover { text-decoration: underline; }
+
+/* responses list */
+.response-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.response-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--ndf-border);
+  text-decoration: none;
+  color: var(--ndf-text);
+  transition: border-color 0.15s ease;
+}
+.response-row:hover { border-color: var(--ndf-primary); }
+.rsp-icon { opacity: 0.55; }
+.rsp-name { font-size: 0.875rem; font-weight: 500; }
+.rsp-date { margin-left: auto; font-size: 0.75rem; color: var(--ndf-text-muted); }
+.rsp-chevron { font-size: 0.9rem; color: var(--ndf-border-strong); }

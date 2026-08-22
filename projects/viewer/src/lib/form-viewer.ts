@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -7,9 +8,9 @@ import {
   input,
   signal,
 } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import {
   FieldDefinition,
+  NdfIcon,
   FieldOption,
   FieldType,
   FormDefinition,
@@ -18,40 +19,58 @@ import {
   FORM_RESPONSE_REPOSITORY,
   NgxFormsService,
   PermissionsInput,
-  ResolvedPermissions,
   computeDependencyDepths,
   resolvePermissions,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { CardModule } from 'primeng/card';
-import { TagModule } from 'primeng/tag';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { MessageModule } from 'primeng/message';
+
 
 interface DisplayRow {
   field: FieldDefinition;
   depth: number;
-  /** Pre-formatted value ready for display. */
   display: string;
   isStars: boolean;
 }
 
 /**
  * `<ngx-form-viewer>` — read-only rendering of a submitted answer against
- * the exact definition version it was given on.
- *
- * - Repository mode: pass `responseId`; definition+response load through DI.
- * - Controlled mode: pass `[response]` and (for version pinning) let the
- *   repository resolve the definition, or pass nothing extra when you also
- *   provide `[definition]`.
- *
- * Hidden and excluded field types are skipped silently. Dependent fields
- * are indented under their parents so conditional structure stays visible.
+ * the exact definition version it was given on. Hidden and excluded field
+ * types are skipped silently; dependent fields indent under their parents.
  */
 @Component({
   selector: 'ngx-form-viewer',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, CardModule, TagModule, ProgressSpinnerModule, MessageModule],
+  imports: [DatePipe, NdfIcon],
   providers: [NgxFormsService],
+  styles: `
+    .viewer { display: flex; flex-direction: column; gap: 1rem; }
+    .viewer-head {
+      border-bottom: 1px solid var(--ndf-border);
+      padding-bottom: 0.75rem;
+    }
+    :host-context(.app-dark) .viewer-head { border-bottom-color: var(--ndf-border); }
+    .head-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+    .viewer-head h2 { margin: 0; font-size: 1.25rem; }
+    .stale-note { font-size: 0.75rem; color: var(--ndf-warning); }
+    :host-context(.app-dark) .stale-note { color: var(--ndf-warning); }
+    .viewer-desc { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
+    .submitted-at { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--ndf-text-muted); }
+
+    .value-list { display: grid; grid-template-columns: 1fr; gap: 0.35rem 1rem; margin: 0; }
+    @media (min-width: 40rem) {
+      .value-list { grid-template-columns: minmax(9rem, 14rem) 1fr; }
+    }
+    .value-label { font-size: 0.875rem; color: var(--ndf-text-muted); }
+    .value-text { margin: 0; font-size: 0.9375rem; }
+    .stars-text { color: var(--p-amber-500); letter-spacing: 0.2em; font-size: 1rem; }
+    .viewer-empty { margin: 0; }
+    .viewer-loading { display: flex; justify-content: center; padding: 2.5rem 0; }
+    .state-card { text-align: center; padding: 2rem 0; }
+    .state-card h3 { margin: 0.75rem 0 0; font-size: 1.05rem; color: var(--ndf-text); }
+    .state-card p { margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
+    .state-icon { color: var(--ndf-text-faint); --ndf-icon-size: 2.25rem; }
+    .state-card h3 { margin: 0.75rem 0 0; font-size: 1.05rem; }
+    .state-card p { margin: 0.5rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
+  `,
   templateUrl: './form-viewer.html',
 })
 export class FormViewer {
@@ -131,8 +150,6 @@ export class FormViewer {
     this.status.set('ready');
   }
 
-  // ---------- presentation ----------
-
   readonly rows = computed<DisplayRow[]>(() => {
     const def = this.definitionState();
     const response = this.responseData();
@@ -159,13 +176,11 @@ export class FormViewer {
 
   readonly submittedLabel = computed(() => {
     const response = this.responseData();
-    return response
-      ? new Date(response.submittedAt).toLocaleString()
-      : '';
+    return response ? new Date(response.submittedAt).toLocaleString() : '';
   });
 }
 
-function formatValue(field: FieldDefinition, value: unknown): string {
+export function formatValue(field: FieldDefinition, value: unknown): string {
   if (value === null || value === undefined || value === '') return '—';
 
   switch (field.type) {
@@ -175,9 +190,7 @@ function formatValue(field: FieldDefinition, value: unknown): string {
     case 'checkbox-group': {
       const selected = Array.isArray(value) ? value : [];
       if (selected.length === 0) return '—';
-      return selected
-        .map((v) => labelFor(field, v))
-        .join(', ');
+      return selected.map((v) => labelFor(field, v)).join(', ');
     }
     case 'radio':
     case 'dropdown':
@@ -187,15 +200,13 @@ function formatValue(field: FieldDefinition, value: unknown): string {
       return '★'.repeat(n) + '☆'.repeat(Math.max(0, (field.max ?? 5) - n));
     }
     case 'date':
-      return typeof value === 'string'
-        ? new Date(value).toLocaleDateString()
-        : String(value);
+      return typeof value === 'string' ? new Date(value).toLocaleDateString() : String(value);
     default:
       return String(value);
   }
 }
 
-function labelFor(field: FieldDefinition, rawValue: unknown): string {
+export function labelFor(field: FieldDefinition, rawValue: unknown): string {
   const option = (field.options ?? []).find((o: FieldOption) => o.value === rawValue);
   return option?.label ?? String(rawValue);
 }

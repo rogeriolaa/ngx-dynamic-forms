@@ -73,12 +73,23 @@ import { DateField, NumberField, RatingField, SliderField } from './number-field
         <ngx-checkbox-group-field [field]="field()" [control]="control()" />
       }
       @default {
-        <div class="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
+        <div class="unsupported">
           Field "{{ field().id }}" has unsupported type "{{ field().type }}". Its value is kept
           but cannot be edited here.
         </div>
       }
     }
+  `,
+  styles: `
+    .unsupported {
+      border: 1px solid var(--p-amber-300);
+      background: var(--p-amber-50);
+      color: var(--p-amber-700);
+      border-radius: 6px;
+      padding: 0.75rem;
+      font-size: 0.875rem;
+    }
+    :host { display: block; }
   `,
 })
 export class FieldHost {

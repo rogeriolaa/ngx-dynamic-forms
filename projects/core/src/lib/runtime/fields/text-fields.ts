@@ -7,7 +7,7 @@ import { FieldShell } from './field-shell';
  * One component per field type. Every component:
  * - receives `field` + `control` inputs (no CVA boilerplate needed)
  * - delegates chrome to `ngx-field-shell` via projection
- * - uses PrimeNG controls bound through [formControl]
+ * - binds native elements styled through the shared `ndf-*` classes
  */
 
 @Component({
@@ -17,14 +17,11 @@ import { FieldShell } from './field-shell';
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
       <input
-        pInputText
+        class="ndf-input"
         [id]="field().id"
         type="text"
-        class="w-full"
         [placeholder]="field().placeholder ?? ''"
         [formControl]="control()"
-        [class.ng-dirty]="false"
-        [attr.aria-describedby]="control().touched && control().invalid ? field().id + '-error' : null"
       />
     </ngx-field-shell>
   `,
@@ -41,13 +38,11 @@ export class TextField {
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
       <input
-        pInputText
+        class="ndf-input"
         [id]="field().id"
         type="email"
-        class="w-full"
-        [placeholder]="field().placeholder ?? 'name@example.com'"
+        placeholder="name@example.com"
         [formControl]="control()"
-        [attr.aria-describedby]="control().touched && control().invalid ? field().id + '-error' : null"
       />
     </ngx-field-shell>
   `,
@@ -64,9 +59,8 @@ export class EmailField {
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
       <textarea
-        pTextarea
+        class="ndf-textarea"
         [id]="field().id"
-        class="w-full"
         [rows]="field().rows ?? 4"
         [placeholder]="field().placeholder ?? ''"
         [formControl]="control()"

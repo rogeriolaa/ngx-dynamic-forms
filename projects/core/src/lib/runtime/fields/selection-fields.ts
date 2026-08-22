@@ -1,27 +1,18 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { FieldDefinition } from '../../models/field-definition';
-import { SelectModule } from 'primeng/select';
-import { MultiSelectModule } from 'primeng/multiselect';
-import { RadioButtonModule } from 'primeng/radiobutton';
-import { CheckboxModule } from 'primeng/checkbox';
-import { FieldShell } from './field-shell';
-
-@Component({
+import { FieldShell } from './field-shell';@Component({
   selector: 'ngx-dropdown-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, SelectModule],
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <p-select
-        [inputId]="field().id"
-        class="w-full"
-        [options]="field().options ?? []"
-        optionLabel="label"
-        optionValue="value"
-        [placeholder]="field().placeholder ?? 'Select…'"
-        [formControl]="control()"
-      />
+      <select class="ndf-select" [id]="field().id" [formControl]="control()">
+        <option [ngValue]="null" disabled>{{ field().placeholder ?? 'Select…' }}</option>
+        @for (option of field().options ?? []; track option.value) {
+          <option [ngValue]="option.value">{{ option.label }}</option>
+        }
+      </select>
     </ngx-field-shell>
   `,
 })
@@ -33,23 +24,27 @@ export class DropdownField {
 @Component({
   selector: 'ngx-multi-select-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, MultiSelectModule],
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <p-multiselect
-        [inputId]="field().id"
-        class="w-full"
-        [options]="field().options ?? []"
-        optionLabel="label"
-        optionValue="value"
-        [placeholder]="field().placeholder ?? 'Choose…'"
+      <select
+        class="ndf-select"
+        multiple
+        [id]="field().id"
         [formControl]="control()"
-        [showToggleAll]="true"
-      />
+        [style.height.rem]="Math.min((field().options?.length ?? 3) + 1, 6)"
+      >
+        @for (option of field().options ?? []; track option.value) {
+          <option [ngValue]="option.value">{{ option.label }}</option>
+        }
+      </select>
     </ngx-field-shell>
   `,
 })
 export class MultiSelectField {
+  /** exposed for the template */
+  readonly Math = Math;
+
   readonly field = input.required<FieldDefinition>();
   readonly control = input.required<FormControl>();
 }
@@ -57,19 +52,32 @@ export class MultiSelectField {
 @Component({
   selector: 'ngx-radio-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, RadioButtonModule],
+  styles: `
+    .choice-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .choice-row { display: flex; align-items: center; gap: 0.5rem; }
+    .choice-input { accent-color: var(--ndf-primary); cursor: pointer; }
+    .choice-label { font-size: 0.875rem; cursor: pointer; color: var(--ndf-text); }
+  `,
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <div class="flex flex-col gap-2">
+      <div class="choice-list">
         @for (option of field().options ?? []; track option.value) {
-          <div class="flex items-center gap-2">
-            <p-radiobutton
+          <div class="choice-row">
+            <input
+              class="choice-input"
+              type="radio"
               [name]="field().id"
               [value]="option.value"
-              [inputId]="field().id + '-' + option.value"
+              [id]="field().id + '-' + option.value"
               [formControl]="control()"
             />
-            <label [for]="field().id + '-' + option.value" class="text-sm cursor-pointer">
+            <label class="choice-label" [for]="field().id + '-' + option.value">
               {{ option.label }}
             </label>
           </div>
@@ -86,13 +94,22 @@ export class RadioField {
 @Component({
   selector: 'ngx-checkbox-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, CheckboxModule],
+  styles: `
+    .single-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .hint { font-size: 0.875rem; color: var(--ndf-text); }
+  `,
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <div class="flex items-center gap-2">
-        <p-checkbox [binary]="true" [inputId]="field().id" [formControl]="control()" />
+      <div class="single-row">
+        <input class="ndf-checkbox" type="checkbox" [id]="field().id" [formControl]="control()" />
         @if (field().placeholder) {
-          <span class="text-sm">{{ field().placeholder }}</span>
+          <span class="hint">{{ field().placeholder }}</span>
         }
       </div>
     </ngx-field-shell>
@@ -106,23 +123,31 @@ export class CheckboxField {
 @Component({
   selector: 'ngx-checkbox-group-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [FieldShell, ReactiveFormsModule, FormsModule, CheckboxModule],
+  styles: `
+    .group-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .group-row { display: flex; align-items: center; gap: 0.5rem; }
+    .group-label { font-size: 0.875rem; cursor: pointer; color: var(--ndf-text); }
+  `,
+  imports: [FieldShell, ReactiveFormsModule],
   template: `
     <ngx-field-shell [field]="field()" [control]="control()">
-      <div class="flex flex-col gap-2">
+      <div class="group-list">
         @for (option of field().options ?? []; track option.value) {
-          <div class="flex items-center gap-2">
-            <p-checkbox
-              [binary]="true"
-              [inputId]="field().id + '-' + option.value"
-              [ngModel]="isChecked(option.value)"
-              [ngModelOptions]="{ standalone: true }"
-              (ngModelChange)="toggle(option.value, $event)"
+          <div class="group-row">
+            <input
+              #box
+              class="ndf-checkbox"
+              type="checkbox"
+              [id]="field().id + '-' + option.value"
+              [checked]="isChecked(option.value)"
+              (change)="toggle(option.value, box.checked)"
             />
-            <label
-              [for]="field().id + '-' + option.value"
-              class="text-sm cursor-pointer"
-            >
+            <label class="group-label" [for]="field().id + '-' + option.value">
               {{ option.label }}
             </label>
           </div>

@@ -15,11 +15,11 @@ import {
   FieldDefinition,
   FieldHost,
   FormDefinition,
+  NdfIcon,
   computeDependencyDepths,
   buildFormGroup,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { ButtonModule } from 'primeng/button';
-import { MessageModule } from 'primeng/message';
+
 
 /**
  * Live, interactive preview of the working copy. Runs the real
@@ -30,44 +30,73 @@ import { MessageModule } from 'primeng/message';
 @Component({
   selector: 'ngx-builder-preview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, FieldHost, ButtonModule, MessageModule],
+  styles: `
+    .preview { display: flex; flex-direction: column; gap: 1rem; }
+    .preview-banner {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+      border-radius: 8px;
+      background: var(--ndf-surface-alt);
+      padding: 0.5rem 0.75rem;
+      font-size: 0.75rem; font-weight: 500; color: var(--ndf-text-muted);
+    }
+    :host-context(.app-dark) .preview-banner { background: var(--ndf-surface-alt); }
+    .preview-banner i { margin-right: 0.375rem; }
+    .preview-title { font-size: 1.25rem; font-weight: 600; margin: 0; }
+    .preview-desc { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .field-cell { grid-column: span 12; }
+    .section-cell {
+      grid-column: 1 / -1;
+      border-bottom: 1px solid var(--ndf-border);
+      padding-top: 0.5rem; padding-bottom: 0.25rem;
+    }
+    :host-context(.app-dark) .section-cell { border-bottom-color: var(--ndf-border); }
+    .section-title { margin: 0.5rem 0 0; font-size: 1rem; font-weight: 600; }
+  `,
+  imports: [ReactiveFormsModule, FieldHost, NdfIcon],
   template: `
     @if (form(); as group) {
-      <div class="flex flex-col gap-4" data-testid="builder-preview">
-        <div class="flex items-center justify-between gap-2 rounded-lg bg-surface-100 px-3 py-2 dark:bg-surface-800">
-          <span class="flex items-center gap-2 text-xs font-medium text-surface-500">
+      <div class="preview" data-testid="builder-preview">
+        <div class="preview-banner">
+          <span>
             <i class="pi pi-eye"></i>
             Preview mode — rules are live, nothing is saved
           </span>
-          <p-button
-            label="Reset values"
-            icon="pi pi-refresh"
-            size="small"
-            variant="text"
-            (onClick)="reset()"
-          />
+          <button type="button" class="ndf-btn ndf-btn--ghost ndf-btn--sm" (click)="reset()">
+            <ndf-icon name="refresh" /> Reset values
+          </button>
         </div>
 
         <header>
-          <h2 class="m-0 text-xl font-semibold">{{ definition()?.title }}</h2>
+          <h2 class="preview-title">{{ definition()?.title }}</h2>
           @if (definition()?.description) {
-            <p class="mb-0 mt-1 text-sm text-surface-500">{{ definition()!.description }}</p>
+            <p class="preview-desc">{{ definition()!.description }}</p>
           }
         </header>
 
-        <div [formGroup]="group" class="grid grid-cols-12 gap-4">
+        <div [formGroup]="group" class="field-grid">
           @for (row of rows(); track row.field.id) {
             @if (row.field.type === 'section') {
-              <div [class]="columnClass(row.field)" [style.marginLeft.rem]="row.depth * 1.5">
-                <h3 class="mb-0 mt-2 border-b border-surface-200 pb-1 text-base font-semibold dark:border-surface-700">
-                  {{ row.field.label }}
-                </h3>
+              <div
+                class="section-cell"
+                [style.marginLeft.rem]="row.depth * 1.5"
+              >
+                <h3 class="section-title">{{ row.field.label }}</h3>
                 @if (row.field.helpText) {
-                  <p class="mb-0 mt-1 text-xs text-surface-500">{{ row.field.helpText }}</p>
+                  <p class="preview-desc">{{ row.field.helpText }}</p>
                 }
               </div>
             } @else if (!isHidden(row.field.id)) {
-              <div [class]="columnClass(row.field)" [style.marginLeft.rem]="row.depth * 1.5">
+              <div
+                class="field-cell"
+                [style.gridColumn]="'span ' + columnSpan(row.field)"
+                [style.marginLeft.rem]="row.depth * 1.5"
+              >
                 <ngx-field-host [field]="row.field" [control]="$any(group.controls[row.field.id])" />
               </div>
             }
@@ -75,9 +104,9 @@ import { MessageModule } from 'primeng/message';
         </div>
 
         @if (hiddenCount() > 0) {
-          <p-message severity="info" [closable]="false" data-testid="preview-hidden-note">
+          <div class="ndf-alert" data-testid="preview-hidden-note">
             {{ hiddenCount() }} field(s) currently hidden by your rules.
-          </p-message>
+          </div>
         }
       </div>
     }
@@ -127,8 +156,8 @@ export class BuilderPreview {
     return this.engine?.isHidden(field.id) ?? false;
   }
 
-  columnClass(field: FieldDefinition): string {
-    return `col-span-12 md:col-span-${Math.min(12, Math.max(3, field.columns ?? 12))}`;
+  columnSpan(field: FieldDefinition): number {
+    return Math.min(12, Math.max(3, field.columns ?? 12));
   }
 
   reset(): void {

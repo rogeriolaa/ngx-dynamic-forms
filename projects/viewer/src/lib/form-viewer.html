@@ -1,87 +1,71 @@
 @switch (status()) {
   @case ('loading') {
-    <div class="flex justify-center p-10">
-      <p-progressspinner />
-    </div>
+    <div class="viewer-loading"><span class="ndf-spinner"></span></div>
   }
   @case ('blocked') {
-    <p-card data-testid="viewer-blocked">
-      <div class="flex flex-col items-center gap-3 py-8 text-center">
-        <i class="pi pi-lock text-4xl text-surface-400"></i>
-        <h3 class="m-0 text-lg font-semibold">Not authorized</h3>
-        <p class="m-0 text-sm text-surface-500">
-          You don't have permission to view this answer.
-        </p>
+    <div class="ndf-card" data-testid="viewer-blocked">
+      <div class="state-card">
+        <ndf-icon name="lock" class="state-icon" />
+        <h3>Not authorized</h3>
+        <p>You don't have permission to view this answer.</p>
       </div>
-    </p-card>
+    </div>
   }
   @case ('missing') {
-    <p-card data-testid="viewer-missing">
-      <div class="flex flex-col items-center gap-3 py-8 text-center">
-        <i class="pi pi-file-excel text-4xl text-surface-400"></i>
-        <h3 class="m-0 text-lg font-semibold">Answer not found</h3>
-        <p class="m-0 text-sm text-surface-500">It may have been deleted.</p>
+    <div class="ndf-card" data-testid="viewer-missing">
+      <div class="state-card">
+        <ndf-icon name="warning" class="state-icon" />
+        <h3>Answer not found</h3>
+        <p>It may have been deleted.</p>
       </div>
-    </p-card>
+    </div>
   }
   @case ('ready') {
     @if (responseData(); as response) {
       @if (definitionState(); as def) {
-        <div class="flex flex-col gap-4" data-testid="form-viewer">
-          <header class="border-b border-surface-200 pb-3 dark:border-surface-700">
-            <div class="flex flex-wrap items-center gap-2">
-              <h2 class="m-0 text-xl font-semibold">{{ def.title }}</h2>
-              <p-tag
-                [value]="'v' + response.formVersion"
-                [severity]="staleVersion() ? 'warn' : 'info'"
-                [rounded]="true"
+        <div class="viewer" data-testid="form-viewer">
+          <header class="viewer-head">
+            <div class="head-title-row">
+              <h2>{{ def.title }}</h2>
+              <span
+                class="ndf-badge"
+                [class.ndf-badge--warning]="staleVersion()"
+                [class.ndf-badge--primary]="!staleVersion()"
                 data-testid="version-tag"
-              />
+              >v{{ response.formVersion }}</span>
               @if (staleVersion()) {
-                <span
-                  class="text-xs text-amber-600 dark:text-amber-400"
-                  data-testid="stale-version-note"
-                >
+                <span class="stale-note" data-testid="stale-version-note">
                   answered against an older version (latest: v{{ latestPublishedVersion() }})
                 </span>
               }
             </div>
             @if (def.description) {
-              <p class="mb-0 mt-1 text-sm text-surface-500">{{ def.description }}</p>
+              <p class="viewer-desc">{{ def.description }}</p>
             }
-            <p class="m-0 mt-1 text-xs text-surface-400">
-              Submitted {{ submittedLabel() }}
-            </p>
+            <p class="submitted-at">Submitted {{ submittedLabel() }}</p>
           </header>
 
-          <dl class="grid grid-cols-12 gap-x-4 gap-y-3">
+          <dl class="value-list">
             @for (row of rows(); track row.field.id) {
               <dt
-                class="col-span-12 sm:col-span-4"
+                class="value-label"
                 [style.marginLeft.rem]="row.depth * 1.5"
                 [attr.data-testid]="'viewer-field-' + row.field.id"
               >
-                <span class="text-sm font-medium text-surface-500 dark:text-surface-400">
-                  {{ row.field.label || row.field.id }}
-                </span>
+                {{ row.field.label || row.field.id }}
               </dt>
               <dd
-                class="col-span-12 mb-0 sm:col-span-8"
+                class="value-text"
+                [class.stars-text]="row.isStars"
                 [style.marginLeft.rem]="row.depth * 1.5"
               >
-                @if (row.isStars) {
-                  <span class="text-base tracking-widest text-amber-500">
-                    {{ row.display }}
-                  </span>
-                } @else {
-                  <span class="text-sm">{{ row.display }}</span>
-                }
+                {{ row.display }}
               </dd>
             }
           </dl>
 
           @if (rows().length === 0) {
-            <p-message severity="info" [closable]="false">This answer is empty.</p-message>
+            <div class="ndf-alert">This answer is empty.</div>
           }
         </div>
       }

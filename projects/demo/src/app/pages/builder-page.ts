@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder } from '@n0n3br/ngx-dynamic-forms-builder';
 import type { FormDefinition } from '@n0n3br/ngx-dynamic-forms-core';
@@ -9,9 +9,9 @@ import { DemoState } from '../demo-state';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormBuilder],
   template: `
-    @if (id) {
+    @if (id(); as formId) {
       <ngx-form-builder
-        [formId]="id"
+        [formId]="formId"
         [permissions]="state.permissions()"
         (definitionSaved)="onSaved()"
         (published)="onPublished($event)"
@@ -24,8 +24,7 @@ export class BuilderPage {
   readonly state = inject(DemoState);
   private readonly router = inject(Router);
 
-  /** Bound from the route param via withComponentInputBinding(). */
-  id!: string;
+  readonly id = input<string>();
 
   onSaved(): void {
     // repository already persisted the working copy — nothing else to do here

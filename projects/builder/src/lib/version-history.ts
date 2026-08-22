@@ -4,9 +4,6 @@ import {
   FormVersionSummary,
   NgxFormsService,
 } from '@n0n3br/ngx-dynamic-forms-core';
-import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
-import { MessageModule } from 'primeng/message';
 
 /**
  * Version timeline for the current form: every frozen publish plus the
@@ -16,60 +13,72 @@ import { MessageModule } from 'primeng/message';
 @Component({
   selector: 'ngx-version-history',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonModule, TagModule, MessageModule, DatePipe],
+    imports: [DatePipe],
+  styles: `
+    .vh { display: flex; flex-direction: column; gap: 0.5rem; }
+    .vh-title {
+      margin: 0;
+      font-size: 0.6875rem; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--ndf-text-muted);
+    }
+    .version-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      border-radius: 6px; padding: 0.35rem 0.625rem;
+      font-size: 0.8125rem;
+      border: 1px solid var(--ndf-border);
+    }
+    :host-context(.app-dark) .version-row { border-color: var(--ndf-border); }
+    .version-row.current { border-color: var(--p-primary-300); }
+    :host-context(.app-dark) .version-row.current { border-color: var(--p-primary-700); }
+    .version-num { font-weight: 600; }
+    .version-date { margin-left: auto; font-size: 0.6875rem; color: var(--ndf-text-muted); }
+    .vh-empty { margin: 0; font-size: 0.6875rem; color: var(--ndf-text-muted); }
+  `,
   template: `
-    <div class="flex flex-col gap-2" data-testid="version-history">
-      <p class="mb-0 mt-0 text-[11px] font-semibold uppercase tracking-wide text-surface-400">
-        Versions
-      </p>
+    <div class="vh" data-testid="version-history">
+      <p class="vh-title">Versions</p>
 
       @if (publishWarning(); as warning) {
-        <p-message severity="warn" [closable]="false" data-testid="publish-warning">
-          {{ warning }}
-        </p-message>
+        <div class="ndf-alert ndf-alert--warn" data-testid="publish-warning">{{ warning }}</div>
       }
 
       @for (version of versions(); track version.version) {
         <div
-          class="flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm"
-          [class]="
-            version.version === currentVersion()
-              ? 'border-primary-300 bg-primary-50 dark:border-primary-700 dark:bg-primary-950'
-              : 'border-surface-200 dark:border-surface-700'
-          "
+          class="version-row"
+          [class.current]="version.version === currentVersion()"
           [attr.data-testid]="'version-' + version.version"
         >
-          <span class="font-semibold">v{{ version.version }}</span>
-          <p-tag
-            [value]="version.status"
-            [severity]="severityFor(version.status)"
-            [rounded]="true"
-          />
-          <span class="ml-auto text-xs text-surface-400">
-            {{ version.updatedAt | date: 'MMM d, HH:mm' }}
-          </span>
+          <span class="version-num">v{{ version.version }}</span>
+          <span
+            class="ndf-badge"
+            [class]="severityFor(version.status) === 'success' ? 'ndf-badge--success' : 'ndf-badge--warning'"
+          >{{ version.status }}</span>
+          <span class="version-date">{{ version.updatedAt | date: 'MMM d, HH:mm' }}</span>
         </div>
       }
       @if (versions().length === 0) {
-        <p class="m-0 text-xs text-surface-400">No versions yet — save first.</p>
+        <p class="vh-empty">No versions yet — save first.</p>
       }
 
+      @if (publishWarning(); as warning) {
+        <div class="ndf-alert ndf-alert--warn" data-testid="publish-warning">{{ warning }}</div>
+      }
       @if (lastError(); as error) {
-        <p-message severity="error" [closable]="false" data-testid="publish-error">
-          {{ error }}
-        </p-message>
+        <div class="ndf-alert ndf-alert--error" data-testid="publish-error">{{ error }}</div>
       }
 
       @if (draftVersion() !== null && canPublish()) {
-        <p-button
-          label="Publish v{{ draftVersion() }}"
-          icon="pi pi-cloud-upload"
-          size="small"
-          styleClass="w-full"
-          [loading]="publishing()"
+        <button
+          type="button"
+          class="ndf-btn w-full-ndf"
+          style="width:100%"
+          [disabled]="!canPublish()"
           data-testid="publish-btn"
-          (onClick)="publish()"
-        />
+          (click)="publish()"
+        >
+          Publish v{{ draftVersion() }}
+        </button>
       }
     </div>
   `,

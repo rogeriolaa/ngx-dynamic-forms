@@ -1,25 +1,22 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormViewer } from '@n0n3br/ngx-dynamic-forms-viewer';
-import { ButtonModule } from 'primeng/button';
 import { DemoState } from '../demo-state';
 
 @Component({
   selector: 'app-view-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, FormViewer, ButtonModule],
+  styles: `
+    .page-col { display: flex; flex-direction: column; gap: 1rem; }
+    .back-row { align-self: flex-start; }
+  `,
+  imports: [RouterLink, FormViewer],
   template: `
-    <div class="flex flex-col gap-4">
-      <p-button
-        label="Back"
-        icon="pi pi-arrow-left"
-        size="small"
-        variant="text"
-        routerLink="/"
-      />
-      @if (responseId) {
+    <div class="page-col">
+      <a class="back-link" routerLink="/">← Back</a>
+      @if (responseId(); as rid) {
         <ngx-form-viewer
-          [responseId]="responseId"
+          [responseId]="rid"
           [permissions]="state.permissions()"
         />
       }
@@ -28,5 +25,5 @@ import { DemoState } from '../demo-state';
 })
 export class ViewPage {
   readonly state = inject(DemoState);
-  responseId!: string;
+  readonly responseId = input<string>();
 }

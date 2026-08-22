@@ -1,31 +1,65 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { FieldTypeRegistry } from '@n0n3br/ngx-dynamic-forms-core';
-import { TooltipModule } from 'primeng/tooltip';
+import { NdfIcon } from '@n0n3br/ngx-dynamic-forms-core';
 import { FormBuilderStore } from './form-builder-store';
 
 /** Palette grouped by category: Inputs / Layout / Hidden. */
 @Component({
   selector: 'ngx-builder-palette',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TooltipModule],
+  styles: `
+    .palette-group { margin-bottom: 1rem; }
+    .palette-title {
+      margin: 0 0 0.5rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ndf-text-muted);
+    }
+    .palette-list { display: flex; flex-direction: column; gap: 0.375rem; }
+    .palette-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      text-align: left;
+      padding: 0.5rem 0.625rem;
+      font-size: 0.875rem;
+      border-radius: 6px;
+      border: 1px solid var(--ndf-border);
+      background: var(--p-surface-0);
+      color: var(--ndf-text);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    :host-context(.app-dark) .palette-item {
+      background: var(--ndf-surface);
+      border-color: var(--ndf-border);
+    }
+    .palette-item:hover {
+      border-color: var(--p-primary-400);
+      background: color-mix(in srgb, var(--p-primary-500) 8%, transparent);
+    }
+    .palette-icon { width: 1rem; text-align: center; color: var(--p-primary-500); }
+    .palette-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  `,
+  imports: [NdfIcon],
   template: `
     @for (group of groups(); track group.category) {
-      <div class="mb-4">
-        <p class="mb-2 mt-0 text-[11px] font-semibold uppercase tracking-wide text-surface-400">
-          {{ group.title }}
-        </p>
-        <div class="grid grid-cols-1 gap-1.5">
+      <div class="palette-group">
+        <p class="palette-title">{{ group.title }}</p>
+        <div class="palette-list">
           @for (meta of group.items; track meta.type) {
             <button
               type="button"
-              class="flex cursor-pointer items-center gap-2 rounded-md border border-surface-200 bg-surface-0 px-2.5 py-2 text-left text-sm transition-colors hover:border-primary-400 hover:bg-primary-50 dark:border-surface-700 dark:bg-surface-900 dark:hover:border-primary-600 dark:hover:bg-primary-950"
-              [pTooltip]="'Add ' + meta.label"
-              tooltipPosition="right"
+              class="palette-item"
+              [title]="'Add ' + meta.label"
               [attr.data-testid]="'palette-' + meta.type"
               (click)="store.addField(meta.type, meta)"
             >
-              <i [class]="meta.icon" class="w-4 text-center text-primary-500"></i>
-              <span class="truncate">{{ meta.label }}</span>
+              <ndf-icon class="palette-icon" [name]="meta.icon" />
+              <span class="palette-label">{{ meta.label }}</span>
             </button>
           }
         </div>
