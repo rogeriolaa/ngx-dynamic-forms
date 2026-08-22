@@ -21,7 +21,59 @@ export class FormBuilderStore {
   /** Bumped whenever a structural edit happens — lets the canvas re-render. */
   private readonly revision = signal(0);
 
+  // ---------- undo / redo ----------
+
+  private static readonly HISTORY_CAP = 50;
+  private undoStack: FormDefinition[] = [];
+  private redoStack: FormDefinition[] = [];
+  /** Bumped whenever the stacks change — drives canUndo/canRedo. */
+  private readonly historyTick = signal(0);
+
+  readonly canUndo = computed(() => {
+    this.historyTick();
+    return this.undoStack.length > 0;
+  });
+  readonly canRedo = computed(() => {
+    this.historyTick();
+    return this.redoStack.length > 0;
+  });
+
+  /** Records the current definition before a mutation. Call inside mutators. */
+  private checkpoint(): void {
+    const current = this.definition();
+    if (!current) return;
+    this.undoStack.push(structuredClone(current));
+    if (this.undoStack.length > FormBuilderStore.HISTORY_CAP) {
+      this.undoStack.shift();
+    }
+    this.redoStack = [];
+    this.historyTick.update((v) => v + 1);
+  }
+
+  undo(): void {
+    const previous = this.undoStack.pop();
+    const current = this.definition();
+    if (!previous || !current) return;
+    this.redoStack.push(structuredClone(current));
+    this.definition.set(previous);
+    this.revision.update((v) => v + 1);
+    this.historyTick.update((v) => v + 1);
+  }
+
+  redo(): void {
+    const next = this.redoStack.pop();
+    const current = this.definition();
+    if (!next || !current) return;
+    this.undoStack.push(structuredClone(current));
+    this.definition.set(next);
+    this.revision.update((v) => v + 1);
+    this.historyTick.update((v) => v + 1);
+  }
+
   load(def: FormDefinition): void {
+    this.undoStack = [];
+    this.redoStack = [];
+    this.historyTick.update((v) => v + 1);
     this.definition.set(structuredClone(def));
     this.selectedFieldId.set(null);
     this.previewMode.set(false);
@@ -29,6 +81,7 @@ export class FormBuilderStore {
   }
 
   patchDefinition(patch: Partial<FormDefinition>): void {
+    this.checkpoint();
     this.definition.update((def) => (def ? { ...def, ...patch } : def));
     this.revision.update((v) => v + 1);
   }
@@ -55,6 +108,7 @@ export class FormBuilderStore {
   }
 
   addField(type: FieldType, meta: { defaultConfig: Partial<FieldDefinition> }): void {
+    this.checkpoint();
     fieldCounter += 1;
     const field: FieldDefinition = {
       id: `${type}_${Date.now().toString(36)}${fieldCounter}`,
@@ -72,6 +126,7 @@ export class FormBuilderStore {
   }
 
   updateField(id: string, patch: Partial<FieldDefinition>): void {
+    this.checkpoint();
     this.definition.update((def) =>
       def
         ? {
@@ -84,6 +139,7 @@ export class FormBuilderStore {
   }
 
   removeField(id: string): void {
+    this.checkpoint();
     this.definition.update((def) => {
       if (!def) return def;
       // drop rules referencing the removed field so validation stays clean
@@ -116,6 +172,7 @@ export class FormBuilderStore {
   }
 
   move(id: string, direction: -1 | 1): void {
+    this.checkpoint();
     if (!this.canMove(id, direction)) return;
     this.definition.update((def) => {
       if (!def) return def;
@@ -130,6 +187,7 @@ export class FormBuilderStore {
 
   /** Drag-and-drop reorder: moves `id` so it ends up at `targetIndex`. */
   reorderField(id: string, targetIndex: number): void {
+    this.checkpoint();
     this.definition.update((def) => {
       if (!def) return def;
       const from = def.fields.findIndex((f) => f.id === id);
@@ -150,6 +208,7 @@ export class FormBuilderStore {
   }
 
   duplicateField(id: string): void {
+    this.checkpoint();
     this.definition.update((def) => {
       if (!def) return def;
       const index = def.fields.findIndex((f) => f.id === id);

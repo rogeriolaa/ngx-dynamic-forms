@@ -80,6 +80,47 @@ describe('FormBuilderStore', () => {
     expect(order()).toEqual(['s', 'r', 'd', 'y', 'x']);
   });
 
+  it('undo/redo restores structural edits and resets on load', () => {
+    const store = new FormBuilderStore();
+    store.load(makeForm([makeField('a')]));
+    expect(store.canUndo()).toBe(false);
+
+    store.addField('text', { defaultConfig: {} });
+    store.removeField(store.definition()!.fields[1].id);
+    expect(store.definition()!.fields).toHaveLength(1);
+    expect(store.canUndo()).toBe(true);
+    expect(store.canRedo()).toBe(false);
+
+    store.undo(); // un-remove
+    expect(store.definition()!.fields).toHaveLength(2);
+    expect(store.canRedo()).toBe(true);
+
+    store.undo(); // un-add
+    expect(store.definition()!.fields.map((f) => f.id)).toEqual(['a']);
+    store.redo(); // re-add
+    expect(store.definition()!.fields).toHaveLength(2);
+
+    // new load clears both stacks
+    store.load(makeForm([makeField('z')]));
+    expect(store.canUndo()).toBe(false);
+    expect(store.canRedo()).toBe(false);
+  });
+
+  it('caps the undo stack at 50 entries', () => {
+    const store = new FormBuilderStore();
+    store.load(makeForm([makeField('base')]));
+    for (let i = 0; i < 60; i++) {
+      store.updateField('base', { label: `v${i}` });
+    }
+    let undos = 0;
+    while (store.canUndo() && undos <= 50) {
+      store.undo();
+      undos++;
+    }
+    expect(undos).toBe(50);
+    expect(store.definition()?.fields[0].label).toBe('v9'); // checkpoints for v0..v9 were dropped
+  });
+
   it('reorders fields to an arbitrary drop index', () => {
     const store = new FormBuilderStore();
     store.load(makeForm([makeField('a'), makeField('b'), makeField('c')]));

@@ -46,6 +46,8 @@ const ICONS: Record<string, string> = {
   'arrows-h': '<polyline points="17 11 19 13 13 19"/><polyline points="7 7 13 13 11 17"/><path d="M3 3l7.07 16.97L12 13l6.97-7.07L3 3z"/>',
   minus: '<line x1="5" y1="12" x2="19" y2="12"/>',
   'arrow-right': '<path d="M5 12h14M12 5l7 7-7 7"/>',
+  undo: '<polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>',
+  redo: '<polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>',
 };
 
 @Component({

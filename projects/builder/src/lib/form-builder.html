@@ -39,6 +39,27 @@
           </span>
 
           <div class="header-actions">
+            <button
+              type="button"
+              class="ndf-btn ndf-btn--ghost ndf-btn--icon"
+              title="Undo (Ctrl+Z)"
+              data-testid="undo-btn"
+              [disabled]="!store.canUndo()"
+              (click)="store.undo()"
+            >
+              <ndf-icon name="undo" />
+            </button>
+            <button
+              type="button"
+              class="ndf-btn ndf-btn--ghost ndf-btn--icon"
+              title="Redo (Ctrl+Shift+Z)"
+              data-testid="redo-btn"
+              [disabled]="!store.canRedo()"
+              (click)="store.redo()"
+            >
+              <ndf-icon name="redo" />
+            </button>
+
             @if (errors().length > 0) {
               <button
                 type="button"

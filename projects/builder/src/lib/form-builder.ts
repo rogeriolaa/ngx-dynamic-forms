@@ -54,6 +54,9 @@ type BuilderStatus = 'loading' | 'ready' | 'blocked' | 'missing';
     VersionHistory,
   ],
   providers: [FormBuilderStore, NgxFormsService],
+  host: {
+    '(document:keydown)': 'onKeydown($event)',
+  },
   styles: `
     .builder { display: flex; flex-direction: column; }
     .builder-header {
@@ -369,6 +372,27 @@ export class FormBuilder {
 
   togglePreview(): void {
     this.store.previewMode.update((v) => !v);
+  }
+
+  /** Ctrl/Cmd+Z undo · Ctrl+Shift+Z / Ctrl+Y redo — ignored while typing. */
+  onKeydown(event: KeyboardEvent): void {
+    if (!(event.ctrlKey || event.metaKey)) return;
+    const key = event.key.toLowerCase();
+    const target = event.target as HTMLElement | null;
+    const typing =
+      target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.isContentEditable;
+    if (typing && key !== 'z' && key !== 'y') return;
+    if (key === 'z' && !event.shiftKey) {
+      if (this.store.canUndo()) {
+        event.preventDefault();
+        this.store.undo();
+      }
+    } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+      if (this.store.canRedo()) {
+        event.preventDefault();
+        this.store.redo();
+      }
+    }
   }
 
   doCancel(): void {
