@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      - name: Build libraries + stylesheet
+        run: npm run build:libs
+      - name: Unit tests
+        run: |
+          npx ng test core
+          npx ng test responder
+          npx ng test builder
+          npx ng test viewer
+      - name: Publish (core → responder → builder → viewer)
+        run: |
+          for lib in core responder builder viewer; do
+            if npm view "$(node -p "require('./dist/' + process.argv[1] + '/package.json').name")" version \
+               --json 2>/dev/null | grep -qF "\"$(node -p "require('./dist/' + process.argv[1] + '/package.json').version")\""; then
+              echo "dist/$lib already published — skipping"
+            else
+              npm publish dist/$lib --access public
+            fi
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: GitHub release notes
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

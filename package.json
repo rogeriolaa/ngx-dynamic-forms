@@ -8,7 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "build:styles": "tailwindcss -i projects/core/theme/styles.source.css -o dist/core/styles.css --minify",
-    "build:libs": "ng build core && ng build responder && ng build builder && ng build viewer && npm run build:styles",
+    "build:libs": "ng build core && ng build responder && ng build builder && ng build viewer && npm run build:styles && for lib in core responder builder viewer; do cp LICENSE dist/$lib/LICENSE; done",
     "lint": "ng lint"
   },
   "private": true,
@@ -38,12 +38,5 @@
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vitest": "^4.0.8"
-  },
-  "projects/core/package": {
-    "json": {
-      "peerDependencies": {
-        "@n0n3br/ngx-form-dependency-engine": "^0.0.4"
-      }
-    }
   }
 }
