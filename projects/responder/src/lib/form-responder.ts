@@ -12,7 +12,7 @@ import {
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import type { Dependency } from '@n0n3br/ngx-form-dependency-engine';
 import { FormDependencyEngine } from '@n0n3br/ngx-form-dependency-engine';
-import { Subscription, debounceTime } from 'rxjs';
+import { Subscription, debounceTime, merge } from 'rxjs';
 import {
   FieldDefinition,
   FieldType,
@@ -165,12 +165,19 @@ export class FormResponder {
   private engine: FormDependencyEngine | null = null;
   private engineSubscription: Subscription | null = null;
   private autoSaveSub: Subscription | null = null;
+  private validitySub: Subscription | null = null;
   private staticallyDisabled = new Set<string>();
   private activeDraftId: string | null = null;
   /** Guards against redundant full re-initialization on input-reference churn. */
   private initializedKey: string | null = null;
   /** Assigned by setupDefinition — re-applies hide/disable + value resets. */
   private syncHiddenControls: () => void = () => {};
+  /**
+   * Bumped on every value/status change of the live FormGroup. Control
+   * validity is NOT signal-tracked, so `canSubmit` needs this to stay
+   * reactive under zoneless change detection.
+   */
+  private readonly validityTick = signal(0);
 
   constructor() {
     effect(() => void this.initialize());
@@ -264,6 +271,11 @@ export class FormResponder {
         if (built.group.dirty) this.saveState.set('pending');
       });
 
+    this.validitySub?.unsubscribe();
+    this.validitySub = merge(built.group.valueChanges, built.group.statusChanges).subscribe(
+      () => this.validityTick.update((v) => v + 1),
+    );
+
     if (def.dependencies.length > 0) {
       setTimeout(syncDisabledState);
     }
@@ -272,10 +284,12 @@ export class FormResponder {
   private teardownEngine(): void {
     this.engineSubscription?.unsubscribe();
     this.autoSaveSub?.unsubscribe();
+    this.validitySub?.unsubscribe();
     this.engine?.destroy();
     this.engine = null;
     this.engineSubscription = null;
     this.autoSaveSub = null;
+    this.validitySub = null;
   }
 
   // ---------- derived ----------
@@ -293,6 +307,7 @@ export class FormResponder {
 
   /** Submit stays disabled while any visible field fails its validators. */
   readonly canSubmit = computed(() => {
+    this.validityTick();
     const group = this.form();
     if (!group) return false;
     return Object.values(group.controls).every((control) => control.disabled || control.valid);
@@ -394,6 +409,7 @@ export class FormResponder {
     // sync so conditional fields reflect the restored answers immediately.
     this.engine?.reevaluate();
     this.syncHiddenControls();
+    this.validityTick.update((v) => v + 1);
     this.draftPrompt.set(null);
   }
 
