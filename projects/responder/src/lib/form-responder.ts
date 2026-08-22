@@ -29,7 +29,6 @@ import {
   buildFormGroup,
   computeDependencyDepths,
   deserializeValues,
-  initialValueFor,
   mergeDraftValues,
   resolvePermissions,
   serializeValues,
@@ -229,28 +228,25 @@ export class FormResponder {
     this.teardownEngine();
 
     if (def.dependencies.length > 0) {
-      this.engine = new FormDependencyEngine(built.group, def.dependencies as Dependency[]);
+      // collapseHiddenChains: when the engine hides a control it resets it to
+      // its initial value inside the same evaluation loop, so chained rules
+      // (A→B→C) collapse without stale values leaking into drafts/responses.
+      this.engine = new FormDependencyEngine(built.group, def.dependencies as Dependency[], {
+        collapseHiddenChains: true,
+      });
       this.engineSubscription = this.engine.activate();
     }
 
     const syncDisabledState = (): void => {
       const group = this.form();
       if (!group) return;
+      // UI-only concern: hidden controls are disabled so they drop out of
+      // validation and canSubmit. Value resets belong to the engine.
       for (const [fieldId, control] of Object.entries(group.controls)) {
         if (this.staticallyDisabled.has(fieldId)) continue;
         const hiddenByRule = this.engine?.isHidden(fieldId) ?? false;
         if (hiddenByRule && control.enabled) {
           control.disable({ emitEvent: false });
-          // Reset the stale value (emitting) so DOWNSTREAM rules that read
-          // this field re-evaluate — otherwise a chain A→B→C keeps C visible
-          // after B was hidden, because B still holds its old answer.
-          const field = this.definitionState()?.fields.find((f) => f.id === fieldId);
-          if (
-            field &&
-            JSON.stringify(control.value) !== JSON.stringify(initialValueFor(field))
-          ) {
-            control.setValue(initialValueFor(field));
-          }
         } else if (!hiddenByRule && control.disabled) {
           control.enable({ emitEvent: false });
         }
