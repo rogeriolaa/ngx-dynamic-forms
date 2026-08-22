@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FormBuilderStore } from './form-builder-store';
 import { RuleEditor } from './rule-editor';
+import { computeDropWindow } from './builder-canvas';
 import { makeField, makeForm } from '../../../core/src/testing/definition-fixtures';
 import type { Dependency } from '@n0n3br/ngx-form-dependency-engine';
 
@@ -70,6 +71,55 @@ describe('FormBuilderStore', () => {
     const store = new FormBuilderStore();
     store.load(makeForm([makeField('dup'), makeField('dup')]));
     expect(store.blockingErrorCount()).toBeGreaterThan(0);
+  });
+});
+
+describe('computeDropWindow', () => {
+  // chain: s -> r -> d, plus independent roots x and y
+  const chainDeps = [
+    {
+      id: 'r1',
+      target: 'r',
+      when: { logic: 'AND', conditions: [{ field: 's', operator: 'equals', value: 'x' }] },
+      effects: [{ type: 'show' }],
+    },
+    {
+      id: 'r2',
+      target: 'd',
+      when: { logic: 'AND', conditions: [{ field: 'r', operator: 'isNotEmpty' }] },
+      effects: [{ type: 'show' }],
+    },
+  ] as unknown as Dependency[];
+
+  it('gives unrelated root fields the full list as their window', () => {
+    const fields = [makeField('s'), makeField('x'), makeField('y')];
+    const window = computeDropWindow(makeForm(fields).fields, [], 'x');
+    expect(window).toEqual({ lo: 0, hi: 1 });
+  });
+
+  it('never lets a dependent land above its ancestor or below its own subtree', () => {
+    // order: s(0) r(1) d(2) x(3) y(4)
+    const fields = [makeField('s'), makeField('r'), makeField('d'), makeField('x'), makeField('y')];
+    const window = computeDropWindow(makeForm(fields).fields, chainDeps, 'r');
+    // without r: [s, d, x, y] — must stay after s (idx>=1) but before d (idx<=0): empty
+    expect(window.lo).toBeGreaterThan(window.hi);
+  });
+
+  it('allows a dependent to sit anywhere between its father and its child', () => {
+    // order: s(0) x(1) r(2) d(3) y(4)
+    const fields = [makeField('s'), makeField('x'), makeField('r'), makeField('d'), makeField('y')];
+    const window = computeDropWindow(makeForm(fields).fields, chainDeps, 'r');
+    // without r: [s, x, d, y] — after s (lo=1), before d (hi=1)
+    expect(window).toEqual({ lo: 1, hi: 1 });
+  });
+
+  it('lets a root field land at the outer edges of a conditional block', () => {
+    // dragging x over positions adjacent to (but not inside) the s→r→d block
+    const fields = [makeField('s'), makeField('r'), makeField('d'), makeField('x'), makeField('y')];
+    const window = computeDropWindow(makeForm(fields).fields, chainDeps, 'x');
+    // without x: [s, r, d, y] — every index is fine; same-depth targeting in
+    // the canvas further restricts which CARDS are droppable
+    expect(window).toEqual({ lo: 0, hi: 3 });
   });
 });
 

@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import type { Dependency } from '@n0n3br/ngx-form-dependency-engine';
 import {
   FieldDefinition,
   FieldTypeRegistry,
   computeDependencyDepths,
+  collectConditionFields,
+  collectEffectTargets,
 } from '@n0n3br/ngx-dynamic-forms-core';
 import { NdfIcon } from '@n0n3br/ngx-dynamic-forms-core';
 import { FormBuilderStore } from './form-builder-store';
@@ -12,6 +15,80 @@ interface CanvasRow {
   icon: string;
   typeLabel: string;
   depth: number;
+}
+
+/** Inclusive range of legal landing indices (in the field list WITHOUT the
+ * dragged field) for a drag of `dragId`. */
+export interface DropWindow {
+  lo: number;
+  hi: number;
+}
+
+function edge(map: Map<string, Set<string>>, from: string, to: string): void {
+  if (from === to) return;
+  const set = map.get(to);
+  if (set) set.add(from);
+  else map.set(to, new Set([from]));
+}
+
+function transitive(start: string, edges: Map<string, Set<string>>): Set<string> {
+  const seen = new Set<string>();
+  const queue = [...(edges.get(start) ?? [])];
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    queue.push(...(edges.get(current) ?? []));
+  }
+  return seen;
+}
+
+/**
+ * Pure helper (unit-tested): where may `dragId` legally land?
+ *
+ * Rules:
+ * - only positions whose field has the SAME dependency depth as the dragged
+ *   field are candidates (a level-0 field may never be dropped into a
+ *   conditional chain and vice versa);
+ * - a field may never land above any of its ancestors nor below any of its
+ *   descendants, so reorderings can never visually detach a rule chain.
+ *
+ * Returned indices refer to the array WITHOUT the dragged field already
+ * removed — exactly what `FormBuilderStore.reorderField` expects.
+ */
+export function computeDropWindow(
+  fields: FieldDefinition[],
+  dependencies: Dependency[],
+  dragId: string,
+): DropWindow {
+  const parents = new Map<string, Set<string>>();
+  const children = new Map<string, Set<string>>();
+  for (const dep of dependencies) {
+    const targets = new Set([dep.target]);
+    collectEffectTargets(dep).forEach((t) => targets.add(t));
+    for (const source of collectConditionFields(dep.when)) {
+      for (const target of targets) {
+        edge(parents, source, target);
+        edge(children, target, source);
+      }
+    }
+  }
+
+  const remaining = fields.filter((f) => f.id !== dragId);
+  const postIndex = new Map(remaining.map((f, i) => [f.id, i]));
+
+  let lo = 0;
+  let hi = remaining.length - 1;
+  for (const ancestor of transitive(dragId, parents)) {
+    const at = postIndex.get(ancestor);
+    if (at !== undefined && at >= lo) lo = at + 1;
+  }
+  for (const descendant of transitive(dragId, children)) {
+    const at = postIndex.get(descendant);
+    if (at !== undefined && at <= hi) hi = at - 1;
+  }
+
+  return { lo, hi };
 }
 
 /**
@@ -121,6 +198,8 @@ interface CanvasRow {
     .drag-hint { display: inline-flex; align-self: center; color: var(--ndf-text-faint); }
     .field-card[draggable='true'] { cursor: grab; }
     .field-card.dragging { opacity: 0.4; cursor: grabbing; }
+    /* while dragging, cards that are not legal same-level targets dim out */
+    .field-card.drop-invalid { opacity: 0.45; }
     .field-card.drop-target {
       border-color: var(--ndf-primary);
       box-shadow: inset 0 2px 0 var(--ndf-primary);
@@ -146,6 +225,7 @@ interface CanvasRow {
             [class.selected]="isSelected(row.field.id)"
             [class.is-hidden]="row.field.type === 'hidden'"
             [class.dragging]="draggingId() === row.field.id"
+            [class.drop-invalid]="draggingId() !== null && !canDropOn(row)"
             [class.drop-target]="dropIndex() === $index && draggingId() !== null && draggingId() !== row.field.id"
             [style.marginLeft.rem]="row.depth * 1.5"
             [attr.data-testid]="'canvas-field-' + row.field.id"
@@ -153,8 +233,8 @@ interface CanvasRow {
             draggable="true"
             (click)="store.select(row.field.id)"
             (dragstart)="onDragStart($event, row.field.id)"
-            (dragover)="onDragOver($event, $index)"
-            (drop)="onDrop($event, $index)"
+            (dragover)="onDragOver($event, row, $index)"
+            (drop)="onDrop($event, row)"
             (dragend)="onDragEnd()"
           >
             @if (row.depth > 0) {
@@ -217,6 +297,12 @@ export class BuilderCanvas {
   /** Canvas index the drop would land on — drives the insertion indicator. */
   readonly dropIndex = signal<number | null>(null);
 
+  private readonly depthById = computed(() => {
+    const map = new Map<string, number>();
+    for (const row of this.rows()) map.set(row.field.id, row.depth);
+    return map;
+  });
+
   onDragStart(event: DragEvent, id: string): void {
     this.draggingId.set(id);
     if (event.dataTransfer) {
@@ -225,19 +311,46 @@ export class BuilderCanvas {
     }
   }
 
-  onDragOver(event: DragEvent, index: number): void {
-    if (this.draggingId() === null) return;
+  /** Index of `fieldId` once the dragged field is removed from the list. */
+  private postRemovalIndex(fieldId: string): number {
+    const def = this.store.definition();
+    const dragId = this.draggingId();
+    if (!def) return -1;
+    const at = def.fields.findIndex((f) => f.id === fieldId);
+    if (at < 0) return -1;
+    const from = def.fields.findIndex((f) => f.id === dragId);
+    return from !== -1 && from < at ? at - 1 : at;
+  }
+
+  /**
+   * A card is a legal target only when it sits at the SAME dependency level
+   * as the dragged field AND inside the ancestor/descendant drop window —
+   * dragging a root field must never nest it inside a conditional chain.
+   */
+  canDropOn(row: CanvasRow): boolean {
+    const dragId = this.draggingId();
+    const def = this.store.definition();
+    if (!dragId || !def || row.field.id === dragId) return false;
+    if (row.depth !== (this.depthById().get(dragId) ?? -1)) return false;
+    const { lo, hi } = computeDropWindow(def.fields, def.dependencies, dragId);
+    const at = this.postRemovalIndex(row.field.id);
+    return at >= lo && at <= hi;
+  }
+
+  onDragOver(event: DragEvent, row: CanvasRow, index: number): void {
+    if (!this.canDropOn(row)) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
     this.dropIndex.set(index);
   }
 
-  onDrop(event: DragEvent, index: number): void {
+  onDrop(event: DragEvent, row: CanvasRow): void {
+    if (!this.canDropOn(row)) return;
     event.preventDefault();
     const id = this.draggingId() ?? event.dataTransfer?.getData('text/plain');
     if (!id) return;
-    // dropping past a card inserts after it, matching the visual indicator
-    this.store.reorderField(id, index);
+    // reorderField expects the index in the list WITHOUT the dragged field
+    this.store.reorderField(id, this.postRemovalIndex(row.field.id));
     this.draggingId.set(null);
     this.dropIndex.set(null);
   }
