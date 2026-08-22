@@ -1,64 +1,78 @@
-# Builder
+# @n0n3br/ngx-dynamic-forms-builder
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.0.
+`<ngx-form-builder>` — WYSIWYG designer for form definitions: palette,
+drag-and-drop canvas, property panel, graphical rule editor, live preview and
+version history with one-click publish.
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Install
 
 ```bash
-ng generate --help
+npm i @n0n3br/ngx-dynamic-forms-builder @n0n3br/ngx-dynamic-forms-core
 ```
 
-## Building
+## Usage
 
-To build the library, run:
+### Repository mode
 
-```bash
-ng build builder
+```html
+<ngx-form-builder
+  [formId]="formId"
+  [permissions]="perms"
+  (definitionSaved)="refresh()"
+  (published)="gotoAnswer($event)"
+  (cancel)="back()"
+/>
 ```
 
-This command will compile your project, and the build artifacts will be placed in the `dist/` directory.
+Loads (or creates) a draft working copy of `formId`. **Save** persists the
+draft; **Publish** validates, freezes the version via
+`NgxFormsService.publish()` and reopens the next draft so editing continues.
 
-### Publishing the Library
+### Controlled mode
 
-Once the project is built, you can publish your library by following these steps:
-
-1. Navigate to the `dist` directory:
-
-   ```bash
-   cd dist/builder
-   ```
-
-2. Run the `npm publish` command to publish your library to the npm registry:
-   ```bash
-   npm publish
-   ```
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
+```html
+<ngx-form-builder [definition]="def" (definitionSaved)="upsert($event)" />
 ```
 
-## Running end-to-end tests
+No repositories → no persistence; save/publish hand the definition back.
 
-For end-to-end (e2e) testing, run:
+## Inputs / outputs
 
-```bash
-ng e2e
-```
+| Input | Type | Notes |
+|---|---|---|
+| `formId` | `string` | Repository mode |
+| `definition` | `FormDefinition` | Controlled mode — always edits a clone |
+| `permissions` | `PermissionsInput` | Resolves `{ canDesign }`; blocked card otherwise |
+| `allowedFieldTypes` | `FieldType[]` | Restricts the palette |
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+| Output | Payload |
+|---|---|
+| `definitionSaved` | `FormDefinition` (after every successful save) |
+| `published` | `FormDefinition` (the frozen version) |
+| `cancel` | `void` |
 
-## Additional Resources
+## Designer features
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- **Palette** — 14 field types grouped in Input / Layout / Hidden sections.
+- **Canvas** — one card per field; conditional fields indent under what they
+  depend on (depth = longest chain) with a guide line naming the parents.
+- **Hierarchy-safe reordering** — drag & drop AND arrow buttons only move a
+  field among same-level positions inside its ancestor/descendant window;
+  cross-level drops are refused (dimmed targets + native no-drop cursor), so a
+  root field can never be visually nested under an unrelated father.
+- **Rule editor** — graphical `when(condition).then(show/hide, required…)`
+  builder producing engine `Dependency` objects; mirrored else-branch for
+  show/hide pairs.
+- **Property panel** — label, required, help text, columns, type options.
+- **Preview** — renders through the real responder runtime.
+- **Version history modal** — timeline of every version + publish button with
+  pinned-response warnings.
+- **Import/export** — copy JSON or download `.json`; imports get a fresh id so
+  they never overwrite the source form.
+
+## Publishing semantics
+
+Publishing runs full validation first (`validateDefinition`), then freezes the
+version. The header reports impact vs the previous published version
+(`cosmetic` / `structural`) and how many historical responses stay pinned to
+older versions.

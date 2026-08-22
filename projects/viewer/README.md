@@ -1,64 +1,39 @@
-# Viewer
+# @n0n3br/ngx-dynamic-forms-viewer
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.0.
+`<ngx-form-viewer>` — read-only rendering of a submitted answer against the
+exact definition version it was given on.
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Install
 
 ```bash
-ng generate --help
+npm i @n0n3br/ngx-dynamic-forms-viewer @n0n3br/ngx-dynamic-forms-core
 ```
 
-## Building
+## Usage
 
-To build the library, run:
+```html
+<!-- by stored response id (loads response + its pinned definition) -->
+<ngx-form-viewer [responseId]="id" />
 
-```bash
-ng build viewer
+<!-- fully controlled -->
+<ngx-form-viewer [response]="response" [definition]="def" />
 ```
 
-This command will compile your project, and the build artifacts will be placed in the `dist/` directory.
+| Input | Type | Notes |
+|---|---|---|
+| `responseId` | `string` | Repository mode |
+| `response` | `FormResponse` | Controlled mode |
+| `definition` | `FormDefinition` | Optional explicit definition override |
+| `permissions` | `PermissionsInput` | Resolves `{ canView }`; blocked card otherwise |
 
-### Publishing the Library
+## Behavior
 
-Once the project is built, you can publish your library by following these steps:
-
-1. Navigate to the `dist` directory:
-
-   ```bash
-   cd dist/viewer
-   ```
-
-2. Run the `npm publish` command to publish your library to the npm registry:
-   ```bash
-   npm publish
-   ```
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- **Version pinning**: uses `response.formVersion`, never the latest draft —
+  an answer from v2 renders as the respondent saw it even after you publish
+  v7. A note appears if the shown version is no longer the latest.
+- **Silent skipping**: hidden and excluded field types are omitted without
+  placeholders — the answer reads exactly like the filled form did.
+- **Layout parity**: same 12-column grid and dependency-depth indentation as
+  the responder, so conditional structure stays readable.
+- Values render type-aware: rating → stars, checkbox-group / multi-select →
+  comma list, dates localized, empty values as `—`.

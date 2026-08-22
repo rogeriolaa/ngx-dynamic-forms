@@ -1,64 +1,111 @@
-# Core
+# @n0n3br/ngx-dynamic-forms-core
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.0.
+Shared foundation for the ngx-dynamic-forms suite: schema models, versioning +
+publish workflow, permissions, field-type registry, persistence ports (with a
+default IndexedDB implementation), draft merging and the field runtime used by
+both the responder and the builder's live preview.
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Install
 
 ```bash
-ng generate --help
+npm i @n0n3br/ngx-dynamic-forms-core
 ```
 
-## Building
+Peer deps: `@angular/core`, `@angular/forms`, `@angular/common`,
+`@n0n3br/ngx-form-dependency-engine` (peer range `^0.0.4`).
 
-To build the library, run:
+## Stylesheet
 
-```bash
-ng build core
+```css
+@import '@n0n3br/ngx-dynamic-forms-core/styles.css';
 ```
 
-This command will compile your project, and the build artifacts will be placed in the `dist/` directory.
+Ships the `--ndf-*` design-token sheet (light defaults + `.app-dark`
+overrides) plus the compiled Tailwind utilities the components use. Hosts
+retheme by overriding variables — see root README.
 
-### Publishing the Library
+## Schema model
 
-Once the project is built, you can publish your library by following these steps:
+```ts
+interface FormDefinition {
+  id: string;
+  version: number;
+  status: 'draft' | 'published';
+  title: string;
+  description?: string;
+  fields: FieldDefinition[];
+  dependencies: Dependency[]; // engine rules
+  createdAt / updatedAt / createdBy? / publishedAt?
+}
 
-1. Navigate to the `dist` directory:
-
-   ```bash
-   cd dist/core
-   ```
-
-2. Run the `npm publish` command to publish your library to the npm registry:
-   ```bash
-   npm publish
-   ```
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
+interface FieldDefinition {
+  id: string;            // unique, referenced by rules
+  type: FieldType;       // 14 built-ins
+  label: string;
+  required?: boolean;
+  columns?: 3|4|6|8|12;  // grid width
+  helpText?, placeholder?, options?, max?, rows?, disabled?
+}
 ```
 
-## Running end-to-end tests
+## Persistence ports
 
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
+```ts
+provideNgxForms()                       // default IndexedDB repositories
+{ provide: FORM_DEFINITION_REPOSITORY, useValue: ... } // your backend
+{ provide: FORM_RESPONSE_REPOSITORY,   useValue: ... }
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+`FormDefinitionRepository`: `saveWorkingCopy · getOrCreateWorkingCopy · publish ·
+getLatestPublished · listVersions · list · archive`.
+`FormResponseRepository`: `save · listByForm · delete · saveDraft · getDraft · discardDraft`.
 
-## Additional Resources
+The IndexedDB store keeps every version as a row keyed `[id, version]`;
+publish flips status immutably, edits always go through a fresh working copy.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## NgxFormsService
+
+Thin orchestration used by all UI packages — useful directly:
+
+```ts
+service.createForm(title)                    → FormDefinition (draft v1)
+service.saveWorkingCopy(def)                 → validates first, throws on errors
+service.publish(id, version)                 → PublishReport { published, impact, responsesPerVersion }
+service.getLatestPublished(id)
+service.getOrCreateWorkingCopy(id)
+service.submitResponse({ definition, values, respondentContext })
+service.saveDraft(...) / getDraft(...) / discardDraft(...)
+```
+
+`impact` comes from structural fingerprinting (`classifyChange`):
+`'none' | 'cosmetic' | 'structural'`.
+
+## Validation & graph helpers
+
+```ts
+validateDefinition(def)      → DefinitionIssue[] { severity, message }
+topologicalSort(fields, deps)→ cycle detection (powers the circular-rule error)
+computeDependencyDepths(fields, deps) → Map<fieldId, depth> // visual nesting
+collectConditionFields / collectEffectTargets
+```
+
+## Draft merge
+
+```ts
+mergeDraftValues(storedValues, def)
+// → { values, report } — drops answers for fields that no longer exist,
+//   resets schema-mismatched types, reports what was dropped so the
+//   responder can warn instead of silently corrupting data.
+serializeValues / deserializeValues // omit hidden-field noise
+buildFormGroup(def) // reactive group with per-type initial values + validators
+initialValueFor(field)
+```
+
+## Field registry
+
+```ts
+FieldTypeRegistry.get(type)  → { label, icon, defaultConfig, ... }
+registry.setAllowed([...])   // restrict palette in embedded scenarios
+```
+
+Register custom types by extending the registry before the components boot.

@@ -1,59 +1,122 @@
-# NgxDynamicForms
+# ngx-dynamic-forms
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.5.
+Angular libraries for **schema-driven conditional forms**: design them visually,
+publish immutable versions, answer with drafts & auto-save, and inspect every
+submission against the exact version it was given on.
 
-## Development server
+Built on [`@n0n3br/ngx-form-dependency-engine`](https://github.com/rogeriolaa/ngx-form-dependency-engine)
+for rule evaluation.
 
-To start a local development server, run:
+## Packages
 
-```bash
-ng serve
-```
+| Package | What it gives you |
+|---|---|
+| `@n0n3br/ngx-dynamic-forms-core` | Schema models, versioning + publish workflow, permissions, field-type registry, IndexedDB repositories (swap for HTTP), draft merge, shared field runtime, `--ndf-*` stylesheet |
+| `@n0n3br/ngx-dynamic-forms-responder` | `<ngx-form-responder>` — interactive answering with drafts, auto-save, resume dialog, validity-gated submit |
+| `@n0n3br/ngx-dynamic-forms-builder` | `<ngx-form-builder>` — WYSIWYG designer: palette, drag-and-drop canvas, property panel, graphical rule editor, version history, one-click publish |
+| `@n0n3br/ngx-dynamic-forms-viewer` | `<ngx-form-viewer>` — read-only rendering of a submission pinned to its definition version |
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Quick start
 
 ```bash
-ng generate --help
+npm i @n0n3br/ngx-dynamic-forms-core @n0n3br/ngx-dynamic-forms-builder \
+      @n0n3br/ngx-dynamic-forms-responder @n0n3br/ngx-dynamic-forms-viewer
 ```
 
-## Building
+```ts
+// app.config.ts
+import { provideNgxForms } from '@n0n3br/ngx-dynamic-forms-core';
 
-To build the project run:
+export const appConfig = {
+  providers: [provideNgxForms()], // IndexedDB-backed repositories
+};
+```
+
+```ts
+// designer
+<ngx-form-builder [formId]="id" (published)="onPublished($event)" />
+
+// live form
+<ngx-form-responder [formId]="id" [respondentContext]="user" />
+
+// read-only answer
+<ngx-form-viewer [responseId]="responseId" />
+```
+
+Import the stylesheet once (tokens + utilities):
+
+```css
+@import '@n0n3br/ngx-dynamic-forms-core/styles.css';
+```
+
+## Theming without forks
+
+Every visual decision reads a CSS custom property. Override any of them on
+`:root` or any container — no rebuild:
+
+```css
+:root {
+  --ndf-primary: #7c3aed;
+  --ndf-radius: 0.75rem;
+}
+.app-dark { /* toggle class on <html> for dark mode */ }
+```
+
+Tokens include surfaces (`--ndf-bg`, `--ndf-surface`, `--ndf-border*`),
+text (`--ndf-text*`) and status colors (`--ndf-danger/warning/success*`).
+
+## The versioning model
+
+- A definition is edited as a **working copy** (`status: 'draft'`).
+- **Publish** freezes that version — it becomes immutable.
+- Further edits automatically open the next draft version (v+1).
+- Every response stores the `formVersion` it answered; the viewer renders it
+  against that exact version forever.
+
+Rules are evaluated by the dependency engine with `collapseHiddenChains`
+enabled: hiding a field resets it to its initial value in the same pass, so
+conditional chains never leak stale answers into drafts or submissions.
+
+## Field types (14)
+
+`text · textarea · number · email · date · dropdown · multi-select · radio ·
+checkbox · checkbox-group · rating · slider · section · hidden`
+
+Restrict what a builder may use:
+
+```html
+<ngx-form-builder [allowedFieldTypes]="['text','radio','dropdown']" />
+```
+
+## Permissions
+
+All three UI components accept `[permissions]` and resolve to
+`{ canDesign, canAnswer, canView }`. Pass a static object or an async factory
+(role lookup, JWT claims…). Without permission the components render a
+blocked state instead of their body.
+
+## Swapping persistence
+
+Repositories are injection tokens — bring your own backend:
+
+```ts
+providers: [
+  { provide: FORM_DEFINITION_REPOSITORY, useValue: myHttpDefinitionRepo },
+  { provide: FORM_RESPONSE_REPOSITORY, useValue: myHttpResponseRepo },
+]
+```
+
+The default `provideNgxForms()` wires IndexedDB (offline-first). Components
+also work in *controlled mode*: pass `[definition]` / `[response]` inputs and
+handle `(definitionSaved)` / `(submitted)` outputs yourself — nothing persists
+without repositories.
+
+## Development
 
 ```bash
-ng build
+npm start          # build libs once, then serve demo on :4200
+npm test           # unit tests (Vitest) across all libs
+npm run build:libs # ng-packagr x4 + compiled Tailwind stylesheet into dist/
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+See per-package READMEs under `projects/*/README.md` for full API tables.
