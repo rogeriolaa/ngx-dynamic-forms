@@ -47,6 +47,39 @@ describe('FormBuilderStore', () => {
     expect(new Set(ids).size).toBe(3);
   });
 
+  it('refuses arrow moves across dependency levels', () => {
+    // s(0) -> r(1) -> d(2), then roots x(0) y(0)
+    const deps = [
+      {
+        id: 'r1',
+        target: 'r',
+        when: { logic: 'AND', conditions: [{ field: 's', operator: 'equals', value: 'x' }] },
+        effects: [{ type: 'show' }],
+      },
+      {
+        id: 'r2',
+        target: 'd',
+        when: { logic: 'AND', conditions: [{ field: 'r', operator: 'isNotEmpty' }] },
+        effects: [{ type: 'show' }],
+      },
+    ] as unknown as Dependency[];
+    const store = new FormBuilderStore();
+    store.load(makeForm([makeField('s'), makeField('r'), makeField('d'), makeField('x'), makeField('y')], deps));
+    const order = () => store.definition()!.fields.map((f) => f.id);
+
+    expect(store.canMove('x', -1)).toBe(false); // neighbour d is depth-2
+    expect(store.canMove('d', 1)).toBe(false); // neighbour x is depth-0
+    expect(store.canMove('r', -1)).toBe(false); // would rise above its father
+    store.move('x', -1);
+    store.move('d', 1);
+    store.move('r', -1);
+    expect(order()).toEqual(['s', 'r', 'd', 'x', 'y']);
+
+    expect(store.canMove('y', -1)).toBe(true); // same-level roots swap freely
+    store.move('y', -1);
+    expect(order()).toEqual(['s', 'r', 'd', 'y', 'x']);
+  });
+
   it('reorders fields to an arbitrary drop index', () => {
     const store = new FormBuilderStore();
     store.load(makeForm([makeField('a'), makeField('b'), makeField('c')]));

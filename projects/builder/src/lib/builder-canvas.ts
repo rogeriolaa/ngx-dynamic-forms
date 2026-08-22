@@ -193,6 +193,7 @@ export function computeDropWindow(
       color: var(--ndf-text-muted);
     }
     .card-tool:hover { background: var(--ndf-surface-alt); color: var(--ndf-text); }
+    .card-tool:disabled { opacity: 0.3; cursor: not-allowed; }
 
     /* drag & drop */
     .drag-hint { display: inline-flex; align-self: center; color: var(--ndf-text-faint); }
@@ -269,10 +270,22 @@ export function computeDropWindow(
 
             <div class="card-tools">
               <span class="drag-hint" title="Drag to reorder"><ndf-icon name="arrows-h" /></span>
-              <button type="button" class="card-tool" title="Move up" (click)="store.move(row.field.id, -1); $event.stopPropagation()">
+              <button
+                type="button"
+                class="card-tool"
+                title="Move up"
+                [disabled]="!store.canMove(row.field.id, -1)"
+                (click)="store.move(row.field.id, -1); $event.stopPropagation()"
+              >
                 <ndf-icon name="arrow-up" />
               </button>
-              <button type="button" class="card-tool" title="Move down" (click)="store.move(row.field.id, 1); $event.stopPropagation()">
+              <button
+                type="button"
+                class="card-tool"
+                title="Move down"
+                [disabled]="!store.canMove(row.field.id, 1)"
+                (click)="store.move(row.field.id, 1); $event.stopPropagation()"
+              >
                 <ndf-icon name="arrow-down" />
               </button>
               <button type="button" class="card-tool" title="Duplicate" (click)="store.duplicateField(row.field.id); $event.stopPropagation()">

@@ -6,6 +6,7 @@ import {
   FormDefinition,
 } from '@n0n3br/ngx-dynamic-forms-core';
 import { validateDefinition, DefinitionIssue } from '@n0n3br/ngx-dynamic-forms-core';
+import { computeDependencyDepths } from '@n0n3br/ngx-dynamic-forms-core';
 
 let fieldCounter = 0;
 
@@ -97,12 +98,29 @@ export class FormBuilderStore {
     this.revision.update((v) => v + 1);
   }
 
+  /**
+   * A field may only swap with a neighbour at the SAME dependency depth —
+   * arrows, like drag & drop, must never cross a conditional-chain boundary
+   * (a dependent can't rise above its father or sink into another subtree).
+   */
+  canMove(id: string, direction: -1 | 1): boolean {
+    const def = this.definition();
+    if (!def) return false;
+    const index = def.fields.findIndex((f) => f.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= def.fields.length) return false;
+    const depths = computeDependencyDepths(def.fields, def.dependencies);
+    return (
+      (depths.get(def.fields[index].id) ?? 0) === (depths.get(def.fields[target].id) ?? 0)
+    );
+  }
+
   move(id: string, direction: -1 | 1): void {
+    if (!this.canMove(id, direction)) return;
     this.definition.update((def) => {
       if (!def) return def;
       const index = def.fields.findIndex((f) => f.id === id);
       const target = index + direction;
-      if (index < 0 || target < 0 || target >= def.fields.length) return def;
       const fields = [...def.fields];
       [fields[index], fields[target]] = [fields[target], fields[index]];
       return { ...def, fields };
