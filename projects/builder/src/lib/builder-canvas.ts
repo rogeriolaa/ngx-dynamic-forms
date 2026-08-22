@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import {
   FieldDefinition,
   FieldTypeRegistry,
@@ -105,7 +105,7 @@ interface CanvasRow {
     :host-context(.app-dark) .badge-hidden { background: var(--ndf-border); }
 
     .card-tools { display: flex; gap: 0.125rem; opacity: 0; transition: opacity 0.15s ease; }
-    .field-card:hover .card-tools { opacity: 1; }
+    .field-card:hover .card-tools, .field-card.dragging .card-tools { opacity: 1; }
     .card-tool {
       display: inline-flex;
       border: none;
@@ -116,6 +116,15 @@ interface CanvasRow {
       color: var(--ndf-text-muted);
     }
     .card-tool:hover { background: var(--ndf-surface-alt); color: var(--ndf-text); }
+
+    /* drag & drop */
+    .drag-hint { display: inline-flex; align-self: center; color: var(--ndf-text-faint); }
+    .field-card[draggable='true'] { cursor: grab; }
+    .field-card.dragging { opacity: 0.4; cursor: grabbing; }
+    .field-card.drop-target {
+      border-color: var(--ndf-primary);
+      box-shadow: inset 0 2px 0 var(--ndf-primary);
+    }
   `,
   imports: [NdfIcon],
   template: `
@@ -136,10 +145,17 @@ interface CanvasRow {
             class="field-card"
             [class.selected]="isSelected(row.field.id)"
             [class.is-hidden]="row.field.type === 'hidden'"
+            [class.dragging]="draggingId() === row.field.id"
+            [class.drop-target]="dropIndex() === $index && draggingId() !== null && draggingId() !== row.field.id"
             [style.marginLeft.rem]="row.depth * 1.5"
             [attr.data-testid]="'canvas-field-' + row.field.id"
             [attr.data-depth]="row.depth"
+            draggable="true"
             (click)="store.select(row.field.id)"
+            (dragstart)="onDragStart($event, row.field.id)"
+            (dragover)="onDragOver($event, $index)"
+            (drop)="onDrop($event, $index)"
+            (dragend)="onDragEnd()"
           >
             @if (row.depth > 0) {
               <div
@@ -172,6 +188,7 @@ interface CanvasRow {
             </div>
 
             <div class="card-tools">
+              <span class="drag-hint" title="Drag to reorder"><ndf-icon name="arrows-h" /></span>
               <button type="button" class="card-tool" title="Move up" (click)="store.move(row.field.id, -1); $event.stopPropagation()">
                 <ndf-icon name="arrow-up" />
               </button>
@@ -194,6 +211,41 @@ interface CanvasRow {
 export class BuilderCanvas {
   readonly store = inject(FormBuilderStore);
   private readonly registry = inject(FieldTypeRegistry);
+
+  /** Field currently being dragged (native HTML5 DnD). */
+  readonly draggingId = signal<string | null>(null);
+  /** Canvas index the drop would land on — drives the insertion indicator. */
+  readonly dropIndex = signal<number | null>(null);
+
+  onDragStart(event: DragEvent, id: string): void {
+    this.draggingId.set(id);
+    if (event.dataTransfer) {
+      event.dataTransfer.setData('text/plain', id);
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  onDragOver(event: DragEvent, index: number): void {
+    if (this.draggingId() === null) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    this.dropIndex.set(index);
+  }
+
+  onDrop(event: DragEvent, index: number): void {
+    event.preventDefault();
+    const id = this.draggingId() ?? event.dataTransfer?.getData('text/plain');
+    if (!id) return;
+    // dropping past a card inserts after it, matching the visual indicator
+    this.store.reorderField(id, index);
+    this.draggingId.set(null);
+    this.dropIndex.set(null);
+  }
+
+  onDragEnd(): void {
+    this.draggingId.set(null);
+    this.dropIndex.set(null);
+  }
 
   readonly rows = computed<CanvasRow[]>(() => {
     const def = this.store.definition();

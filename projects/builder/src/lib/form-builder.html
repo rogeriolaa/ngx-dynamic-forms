@@ -90,12 +90,24 @@
             <button
               type="button"
               class="ndf-btn"
-              [disabled]="saving()"
+              [disabled]="saving() || publishing()"
               data-testid="save-btn"
               (click)="save()"
             >
               <ndf-icon name="save" /> {{ saving() ? 'Saving…' : 'Save' }}
             </button>
+            @if (canPersist() && def.status === 'draft') {
+              <button
+                type="button"
+                class="ndf-btn"
+                [disabled]="saving() || publishing()"
+                data-testid="publish-btn"
+                title="Freeze this draft as an immutable published version"
+                (click)="publish()"
+              >
+                <ndf-icon name="send" /> {{ publishing() ? 'Publishing…' : 'Publish' }}
+              </button>
+            }
             <button type="button" class="icon-btn" title="Close designer" (click)="doCancel()">
               <ndf-icon name="x" />
             </button>
@@ -170,7 +182,7 @@
                 [formId]="def.id"
                 [currentVersion]="def.version"
                 [isDraft]="def.status === 'draft'"
-                (published)="published.emit($any(def)); showVersions.set(false); save()"
+                (published)="onModalPublished()"
               />
               <div class="dialog-actions">
                 <button type="button" class="ndf-btn ndf-btn--secondary" (click)="showVersions.set(false)">

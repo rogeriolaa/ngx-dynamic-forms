@@ -185,6 +185,7 @@ export class FormBuilder {
     canView: false,
   });
   readonly saving = signal(false);
+  readonly publishing = signal(false);
   readonly lastSaveInfo = signal<string | null>(null);
   readonly saveError = signal<string | null>(null);
   readonly showIssues = signal(false);
@@ -244,10 +245,7 @@ export class FormBuilder {
 
     const blocking = validateDefinition(def).filter((i) => i.severity === 'error');
     if (blocking.length > 0) {
-      this.saveError.set(
-        `${blocking.length} blocking issue(s): ${blocking.map((e) => e.message).join(' ')}`,
-      );
-      this.showIssues.set(true);
+      this.reportBlocking(blocking);
       return;
     }
 
@@ -269,6 +267,75 @@ export class FormBuilder {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  /**
+   * One-click publish: persists the current edits, freezes the version,
+   * then reopens the next draft working copy so editing can continue.
+   */
+  async publish(): Promise<void> {
+    if (!this.canPersist() || this.saving()) return;
+    const def = this.store.definition();
+    if (!def) return;
+
+    const blocking = validateDefinition(def).filter((i) => i.severity === 'error');
+    if (blocking.length > 0) {
+      this.reportBlocking(blocking);
+      return;
+    }
+
+    this.publishing.set(true);
+    try {
+      // 1. persist latest edits — publish always freezes what's stored
+      await this.service.saveWorkingCopy(def);
+      // 2. freeze the draft into an immutable published version
+      const report = await this.service.publish(def.id, def.version);
+      // 3. keep designing on the next draft
+      const next = await this.service.getOrCreateWorkingCopy(def.id);
+      this.store.load(next);
+      this.showVersions.set(false);
+      const impact =
+        report.impact !== 'none' && report.impact !== undefined ? ` (${report.impact} change)` : '';
+      this.lastSaveInfo.set(
+        `Published v${report.published.version}${impact} — now editing draft v${next.version}`,
+      );
+      this.published.emit(report.published);
+    } catch (error) {
+      this.saveError.set(error instanceof Error ? error.message : 'Publish failed.');
+    } finally {
+      this.publishing.set(false);
+    }
+  }
+
+  /**
+   * Version-history modal finished publishing. The stored row is already
+   * immutable/published — reloading a fresh working copy (never re-saving
+   * the in-memory draft, which would flip the version back to draft).
+   */
+  async onModalPublished(): Promise<void> {
+    this.showVersions.set(false);
+    const current = this.store.definition();
+    if (!this.canPersist() || !current) {
+      this.published.emit(current!);
+      return;
+    }
+    try {
+      const next = await this.service.getOrCreateWorkingCopy(current.id);
+      this.store.load(next);
+      this.lastSaveInfo.set(
+        `Published v${next.version - 1} — now editing draft v${next.version}`,
+      );
+      this.published.emit(next);
+    } catch {
+      /* keep editing the current copy */
+    }
+  }
+
+  private reportBlocking(blocking: { message: string }[]): void {
+    this.saveError.set(
+      `${blocking.length} blocking issue(s): ${blocking.map((e) => e.message).join(' ')}`,
+    );
+    this.showIssues.set(true);
   }
 
   importJson(raw: string): void {

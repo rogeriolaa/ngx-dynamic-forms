@@ -110,6 +110,27 @@ export class FormBuilderStore {
     this.revision.update((v) => v + 1);
   }
 
+  /** Drag-and-drop reorder: moves `id` so it ends up at `targetIndex`. */
+  reorderField(id: string, targetIndex: number): void {
+    this.definition.update((def) => {
+      if (!def) return def;
+      const from = def.fields.findIndex((f) => f.id === id);
+      if (
+        from < 0 ||
+        from === targetIndex ||
+        targetIndex < 0 ||
+        targetIndex >= def.fields.length
+      ) {
+        return def;
+      }
+      const fields = [...def.fields];
+      const [moved] = fields.splice(from, 1);
+      fields.splice(targetIndex, 0, moved);
+      return { ...def, fields };
+    });
+    this.revision.update((v) => v + 1);
+  }
+
   duplicateField(id: string): void {
     this.definition.update((def) => {
       if (!def) return def;

@@ -46,6 +46,26 @@ describe('FormBuilderStore', () => {
     expect(new Set(ids).size).toBe(3);
   });
 
+  it('reorders fields to an arbitrary drop index', () => {
+    const store = new FormBuilderStore();
+    store.load(makeForm([makeField('a'), makeField('b'), makeField('c')]));
+    store.reorderField('a', 2);
+    expect(store.definition()!.fields.map((f) => f.id)).toEqual(['b', 'c', 'a']);
+
+    store.reorderField('c', 0);
+    expect(store.definition()!.fields.map((f) => f.id)).toEqual(['c', 'b', 'a']);
+  });
+
+  it('ignores out-of-range and no-op reorders', () => {
+    const store = new FormBuilderStore();
+    const def = makeForm([makeField('a'), makeField('b')]);
+    store.load(def);
+    store.reorderField('a', 9);
+    store.reorderField('a', -1);
+    store.reorderField('missing', 0);
+    expect(store.definition()!.fields.map((f) => f.id)).toEqual(['a', 'b']);
+  });
+
   it('surfaces validation issues from the definition', () => {
     const store = new FormBuilderStore();
     store.load(makeForm([makeField('dup'), makeField('dup')]));
