@@ -14,6 +14,9 @@ export type FieldType =
   | 'checkbox-group'
   | 'rating'
   | 'slider'
+  | 'cpf'
+  | 'cnpj'
+  | 'cep'
   | 'section'
   | 'hidden';
 

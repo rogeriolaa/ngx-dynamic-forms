@@ -10,6 +10,7 @@ import {
   RadioField,
 } from './selection-fields';
 import { DateField, NumberField, RatingField, SliderField } from './number-fields';
+import { CepField, CnpjField, CpfField } from './br-fields';
 
 /**
  * Renders the right control for a field definition. Layout (`section`)
@@ -33,6 +34,9 @@ import { DateField, NumberField, RatingField, SliderField } from './number-field
     RadioField,
     CheckboxField,
     CheckboxGroupField,
+    CpfField,
+    CnpjField,
+    CepField,
   ],
   template: `
     @switch (field().type) {
@@ -56,6 +60,15 @@ import { DateField, NumberField, RatingField, SliderField } from './number-field
       }
       @case ('rating') {
         <ngx-rating-field [field]="field()" [control]="control()" />
+      }
+      @case ('cpf') {
+        <ngx-cpf-field [field]="field()" [control]="control()" />
+      }
+      @case ('cnpj') {
+        <ngx-cnpj-field [field]="field()" [control]="control()" />
+      }
+      @case ('cep') {
+        <ngx-cep-field [field]="field()" [control]="control()" />
       }
       @case ('dropdown') {
         <ngx-dropdown-field [field]="field()" [control]="control()" />

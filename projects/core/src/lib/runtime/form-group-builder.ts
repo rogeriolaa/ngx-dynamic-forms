@@ -1,5 +1,6 @@
 import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
 import { FieldDefinition, FormDefinition, FormValues } from '../models/field-definition';
+import { validateCep, validateCnpj, validateCpf } from '../validation/br-validators';
 
 export interface BuiltForm {
   group: FormGroup;
@@ -7,7 +8,7 @@ export interface BuiltForm {
   staticallyDisabled: Set<string>;
 }
 
-function validatorsFor(field: FieldDefinition): ValidatorFn[] {
+export function validatorsFor(field: FieldDefinition): ValidatorFn[] {
   const validators: ValidatorFn[] = [];
   if (field.required) {
     if (field.type === 'checkbox') {
@@ -33,6 +34,15 @@ function validatorsFor(field: FieldDefinition): ValidatorFn[] {
     case 'rating':
       if (field.min !== undefined) validators.push(Validators.min(field.min));
       if (field.max !== undefined) validators.push(Validators.max(field.max));
+      break;
+    case 'cpf':
+      validators.push(validateCpf());
+      break;
+    case 'cnpj':
+      validators.push(validateCnpj());
+      break;
+    case 'cep':
+      validators.push(validateCep());
       break;
     default:
       break;
