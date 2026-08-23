@@ -59,7 +59,11 @@
                 [class.stars-text]="row.isStars"
                 [style.marginLeft.rem]="row.depth * 1.5"
               >
-                {{ row.display }}
+                @if (row.image) {
+                  <img class="value-image" [src]="row.image" alt="{{ row.field.label || row.field.id }}" />
+                } @else {
+                  {{ row.display }}
+                }
               </dd>
             }
           </dl>

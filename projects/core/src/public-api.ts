@@ -30,6 +30,8 @@ export * from './lib/runtime/form-group-builder';
 export * from './lib/runtime/wizard';
 export * from './lib/runtime/fields/field-shell';
 export * from './lib/runtime/fields/text-fields';
+export * from './lib/runtime/fields/br-fields';
+export * from './lib/runtime/fields/file-fields';
 export * from './lib/runtime/fields/number-fields';
 export * from './lib/runtime/fields/selection-fields';
 export * from './lib/runtime/fields/field-host';

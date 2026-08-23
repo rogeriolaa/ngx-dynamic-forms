@@ -11,6 +11,7 @@ import {
 } from './selection-fields';
 import { DateField, NumberField, RatingField, SliderField } from './number-fields';
 import { CepField, CnpjField, CpfField } from './br-fields';
+import { FileUploadField, SignaturePad } from './file-fields';
 
 /**
  * Renders the right control for a field definition. Layout (`section`)
@@ -37,6 +38,8 @@ import { CepField, CnpjField, CpfField } from './br-fields';
     CpfField,
     CnpjField,
     CepField,
+    FileUploadField,
+    SignaturePad,
   ],
   template: `
     @switch (field().type) {
@@ -69,6 +72,12 @@ import { CepField, CnpjField, CpfField } from './br-fields';
       }
       @case ('cep') {
         <ngx-cep-field [field]="field()" [control]="control()" />
+      }
+      @case ('file-upload') {
+        <ngx-file-upload-field [field]="field()" [control]="control()" />
+      }
+      @case ('signature') {
+        <ngx-signature-pad [field]="field()" [control]="control()" />
       }
       @case ('dropdown') {
         <ngx-dropdown-field [field]="field()" [control]="control()" />

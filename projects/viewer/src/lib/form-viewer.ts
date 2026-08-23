@@ -29,6 +29,8 @@ interface DisplayRow {
   depth: number;
   display: string;
   isStars: boolean;
+  /** data:image URL to render inline (uploads/signatures) */
+  image?: string;
 }
 
 /**
@@ -62,6 +64,13 @@ interface DisplayRow {
     .value-label { font-size: 0.875rem; color: var(--ndf-text-muted); }
     .value-text { margin: 0; font-size: 0.9375rem; }
     .stars-text { color: var(--p-amber-500); letter-spacing: 0.2em; font-size: 1rem; }
+    .value-image {
+      max-width: 16rem;
+      max-height: 8rem;
+      border: 1px solid var(--ndf-border);
+      border-radius: 8px;
+      background: #fff;
+    }
     .viewer-empty { margin: 0; }
     .viewer-loading { display: flex; justify-content: center; padding: 2.5rem 0; }
     .state-card { text-align: center; padding: 2rem 0; }
@@ -160,12 +169,17 @@ export class FormViewer {
 
     return def.fields
       .filter((f) => f.type !== 'section' && f.type !== 'hidden' && !excluded.has(f.type))
-      .map((field) => ({
-        field,
-        depth: depths.get(field.id) ?? 0,
-        display: formatValue(field, response.values[field.id]),
-        isStars: field.type === 'rating',
-      }));
+      .map((field) => {
+        const value = response.values[field.id];
+        const image = imageDataOf(field, value);
+        return {
+          field,
+          depth: depths.get(field.id) ?? 0,
+          display: image ? '' : formatValue(field, value),
+          isStars: field.type === 'rating',
+          image,
+        };
+      });
   });
 
   readonly staleVersion = computed(() => {
@@ -201,9 +215,24 @@ export function formatValue(field: FieldDefinition, value: unknown): string {
     }
     case 'date':
       return typeof value === 'string' ? new Date(value).toLocaleDateString() : String(value);
+    case 'signature':
+      return typeof value === 'string' && value.startsWith('data:image') ? 'Signed' : '—';
+    case 'file-upload':
+      return (value as { name?: string } | null)?.name ?? 'Attached file';
     default:
       return String(value);
   }
+}
+
+/** Inline image for upload/signature answers; undefined → text rendering. */
+function imageDataOf(field: FieldDefinition, value: unknown): string | undefined {
+  const dataUrl =
+    field.type === 'signature' && typeof value === 'string'
+      ? value
+      : field.type === 'file-upload' && value && typeof value === 'object'
+        ? (value as { dataUrl?: unknown }).dataUrl
+        : undefined;
+  return typeof dataUrl === 'string' && dataUrl.startsWith('data:image') ? dataUrl : undefined;
 }
 
 export function labelFor(field: FieldDefinition, rawValue: unknown): string {

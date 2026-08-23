@@ -158,6 +158,22 @@ export const BUILT_IN_FIELD_TYPES: FieldTypeMeta[] = [
     defaultConfig: { placeholder: '00000-000' },
   },
   {
+    type: 'file-upload',
+    label: 'File upload',
+    icon: 'upload',
+    category: 'input',
+    supportsOptions: false,
+    defaultConfig: { accept: '' },
+  },
+  {
+    type: 'signature',
+    label: 'Signature pad',
+    icon: 'pencil',
+    category: 'input',
+    supportsOptions: false,
+    defaultConfig: {},
+  },
+  {
     type: 'section',
     label: 'Section header',
     icon: 'minus',

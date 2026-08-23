@@ -18,6 +18,16 @@ function isCompatible(field: FieldDefinition, value: unknown): boolean {
   if (MULTI_VALUE_TYPES.has(field.type)) return Array.isArray(value);
   if (field.type === 'checkbox') return typeof value === 'boolean';
   if (field.type === 'date') return typeof value === 'string' || value instanceof Date;
+  if (field.type === 'file-upload') {
+    return (
+      !!value &&
+      typeof value === 'object' &&
+      typeof (value as { dataUrl?: unknown }).dataUrl === 'string'
+    );
+  }
+  if (field.type === 'signature') {
+    return typeof value === 'string' && value.startsWith('data:image');
+  }
   return typeof value === 'string' || typeof value === 'number';
 }
 

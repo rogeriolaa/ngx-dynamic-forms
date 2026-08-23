@@ -17,6 +17,8 @@ export type FieldType =
   | 'cpf'
   | 'cnpj'
   | 'cep'
+  | 'file-upload'
+  | 'signature'
   | 'section'
   | 'hidden';
 
@@ -70,6 +72,9 @@ export interface FieldDefinition {
   pattern?: string;
   /** textarea */
   rows?: number;
+
+  /** file-upload — comma-separated accept filter (e.g. "image/*,.pdf") */
+  accept?: string;
 
   /**
    * Wizard page this field belongs to (matches `FormDefinition.steps[].id`).
