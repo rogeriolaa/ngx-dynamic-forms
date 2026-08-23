@@ -16,9 +16,13 @@ import {
   FieldDefinition,
   FieldHost,
   FormDefinition,
+  FormStep,
   NdfIcon,
-  computeDependencyDepths,
   buildFormGroup,
+  computeDependencyDepths,
+  invalidStepFieldIds,
+  isStepFieldsValid,
+  resolveFieldStepId,
 } from '@n0n3br/ngx-dynamic-forms-core';
 
 
@@ -79,6 +83,37 @@ import {
     }
     :host-context(.app-dark) .section-cell { border-bottom-color: var(--ndf-border); }
     .section-title { margin: 0.5rem 0 0; font-size: 1rem; font-weight: 600; }
+
+    .stepper {
+      display: flex; flex-wrap: wrap; gap: 0.375rem;
+      list-style: none; margin: 0; padding: 0;
+    }
+    .step-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      border: 1px solid var(--ndf-border);
+      border-radius: 999px;
+      background: transparent;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      color: var(--ndf-text-muted);
+    }
+    .step-pill:hover { color: var(--ndf-text); }
+    .step-pill.active {
+      border-color: var(--p-primary-500);
+      color: var(--p-primary-600);
+      font-weight: 600;
+    }
+    .step-pill.done { color: var(--ndf-success); }
+    .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.125rem; height: 1.125rem;
+      border-radius: 999px;
+      background: var(--ndf-surface-alt);
+      font-size: 0.6875rem; font-weight: 700;
+    }
+    .wizard-nav { display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end; }
+    .wizard-hint { margin-right: auto; font-size: 0.75rem; color: var(--ndf-text-muted); }
   `,
   imports: [ReactiveFormsModule, FieldHost, NdfIcon],
   template: `
@@ -101,8 +136,29 @@ import {
           }
         </header>
 
+        <!-- wizard stepper -->
+        @if (isWizard()) {
+          <ol class="stepper" data-testid="preview-stepper">
+            @for (s of steps(); track s.id; let i = $index) {
+              <li>
+                <button
+                  type="button"
+                  class="step-pill"
+                  [class.active]="i === currentStep()"
+                  [class.done]="i < currentStep()"
+                  [attr.data-testid]="'preview-step-pill-' + i"
+                  (click)="goToStep(i)"
+                >
+                  <span class="step-num">{{ i < currentStep() ? '✓' : i + 1 }}</span>
+                  {{ s.title || s.id }}
+                </button>
+              </li>
+            }
+          </ol>
+        }
+
         <div [formGroup]="group" class="field-grid">
-          @for (row of rows(); track row.field.id) {
+          @for (row of visibleRows(); track row.field.id) {
             @if (row.field.type === 'section') {
               <div
                 class="section-cell"
@@ -128,6 +184,38 @@ import {
         @if (hiddenCount() > 0) {
           <div class="ndf-alert" data-testid="preview-hidden-note">
             {{ hiddenCount() }} field(s) currently hidden by your rules.
+          </div>
+        }
+
+        @if (isWizard()) {
+          @if (stepErrors().length > 0) {
+            <div class="ndf-alert ndf-alert--error" data-testid="preview-step-errors" role="alert">
+              Fill this step before advancing: {{ stepErrors().join(', ') }}
+            </div>
+          }
+          <div class="wizard-nav">
+            <span class="wizard-hint">Step {{ currentStep() + 1 }} of {{ steps().length }} — preview only, nothing is saved</span>
+            <button
+              type="button"
+              class="ndf-btn ndf-btn--secondary ndf-btn--sm"
+              [disabled]="currentStep() === 0"
+              data-testid="preview-back-btn"
+              (click)="goBack()"
+            >
+              Back
+            </button>
+            @if (!isLastStep()) {
+              <button
+                type="button"
+                class="ndf-btn ndf-btn--sm"
+                data-testid="preview-next-btn"
+                (click)="goNext()"
+              >
+                Next <ndf-icon name="arrow-right" />
+              </button>
+            } @else {
+              <span class="wizard-hint">End of form</span>
+            }
           </div>
         }
 
@@ -171,12 +259,42 @@ export class BuilderPreview {
   private staticDisabled = new Set<string>();
   private destroyRef = inject(DestroyRef);
 
+  /** Active wizard page in preview (0-based). */
+  readonly currentStep = signal(0);
+  readonly stepErrors = signal<string[]>([]);
+
   readonly form = signal<FormGroup | null>(null);
 
   readonly rows = computed(() => {
     const def = this.definition();
     const depths = computeDependencyDepths(def.fields, def.dependencies);
     return def.fields.map((field) => ({ field, depth: depths.get(field.id) ?? 0 }));
+  });
+
+  // ---------- wizard (preview) ----------
+
+  readonly steps = computed<FormStep[]>(() => this.definition().steps ?? []);
+  readonly isWizard = computed(() => this.steps().length > 0);
+
+  readonly currentStepId = computed<string | null>(() => {
+    const steps = this.steps();
+    if (steps.length === 0) return null;
+    const i = this.currentStep();
+    return steps[Math.min(Math.max(i, 0), steps.length - 1)].id;
+  });
+
+  readonly isLastStep = computed(() => {
+    const steps = this.steps();
+    return steps.length === 0 || this.currentStep() >= steps.length - 1;
+  });
+
+  /** Rows for the active wizard page; single-page forms pass through. */
+  readonly visibleRows = computed(() => {
+    const allRows = this.rows();
+    const stepId = this.currentStepId();
+    if (!stepId) return allRows;
+    const steps = this.steps() ?? undefined;
+    return allRows.filter((row) => resolveFieldStepId(row.field, steps) === stepId);
   });
 
   readonly hiddenCount = computed(() => {
@@ -202,17 +320,60 @@ export class BuilderPreview {
     const built = buildFormGroup(def);
     this.form.set(built.group);
     this.staticDisabled = built.staticallyDisabled;
+    // structural edits restart the wizard
+    this.currentStep.set(0);
+    this.stepErrors.set([]);
     // trace: true powers the live "Rule inspector" panel below the form
     const engine = new FormDependencyEngine(built.group, def.dependencies as Dependency[], {
       trace: true,
     });
     engine.activate();
-    // subscribed AFTER engine.activate() → runs post-evaluation
-    this.valueSub = built.group.valueChanges.subscribe(() =>
-      this.evalTick.update((v) => v + 1),
-    );
+    // subscribed AFTER engine.activate() → runs post-evaluation.
+    // statusChanges too: setRequired effects change validity without a value event.
+    const tick = () => this.evalTick.update((v) => v + 1);
+    this.valueSub = built.group.valueChanges.subscribe(tick);
+    const statusSub = built.group.statusChanges.subscribe(tick);
+    this.destroyRef.onDestroy(() => statusSub.unsubscribe());
     this.engine = engine;
     this.engineState.set(engine);
+  }
+
+  // ---------- wizard navigation ----------
+
+  goNext(): void {
+    this.goToStep(this.currentStep() + 1);
+  }
+
+  goBack(): void {
+    if (this.currentStep() > 0) {
+      this.currentStep.update((i) => i - 1);
+      this.stepErrors.set([]);
+    }
+  }
+
+  /** Free backward jumps; forward jumps stop at the first invalid page. */
+  goToStep(target: number): void {
+    const steps = this.steps();
+    const group = this.form();
+    if (steps.length === 0 || !group) return;
+    if (target < 0 || target >= steps.length) return;
+
+    let cursor = this.currentStep();
+    while (cursor < target) {
+      const stepId = steps[cursor].id;
+      if (!isStepFieldsValid(this.definition().fields, steps, stepId, group)) {
+        const badIds = invalidStepFieldIds(this.definition().fields, steps, stepId, group);
+        badIds.forEach((id) => group.controls[id]?.markAsTouched());
+        this.stepErrors.set(
+          badIds.map((id) => this.definition().fields.find((f) => f.id === id)?.label ?? id),
+        );
+        this.currentStep.set(cursor);
+        return;
+      }
+      cursor += 1;
+    }
+    this.currentStep.set(target);
+    this.stepErrors.set([]);
   }
 
   isHidden(fieldId: string): boolean {
