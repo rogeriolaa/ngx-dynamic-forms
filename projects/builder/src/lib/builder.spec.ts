@@ -148,6 +148,77 @@ describe('FormBuilderStore', () => {
   });
 });
 
+describe('FormBuilderStore — wizard steps', () => {
+  it('adds, renames and reorders steps', () => {
+    const store = new FormBuilderStore();
+    store.load(makeForm([makeField('a')]));
+    expect(store.steps()).toHaveLength(0);
+
+    store.addStep();
+    store.addStep();
+    expect(store.steps().map((s) => s.title)).toEqual(['Step 1', 'Step 2']);
+
+    store.renameStep(store.steps()[1].id, 'Contact');
+    expect(store.steps()[1].title).toBe('Contact');
+
+    const firstId = store.steps()[0].id;
+    store.moveStep(firstId, 1);
+    expect(store.steps()[0].title).toBe('Contact');
+    // undo restores order
+    store.undo();
+    expect(store.steps()[0].id).toBe(firstId);
+  });
+
+  it('assigns new fields to the first step on multi-step forms', () => {
+    const store = new FormBuilderStore();
+    store.load(makeForm([makeField('a')]));
+    store.addStep();
+    store.addField('text', { defaultConfig: {} });
+    const added = store.definition()!.fields.at(-1)!;
+    expect(added.stepId).toBe(store.steps()[0].id);
+  });
+
+  it('removing a step reassigns its fields to the new first step', () => {
+    const store = new FormBuilderStore();
+    const def = makeForm(
+      [makeField('a'), makeField('b')],
+      [],
+      {
+        steps: [
+          { id: 's1', title: 'One' },
+          { id: 's2', title: 'Two' },
+        ],
+      },
+    );
+    def.fields[0].stepId = 's1';
+    def.fields[1].stepId = 's2';
+    store.load(def);
+
+    store.removeStep('s1');
+    expect(store.steps().map((s) => s.id)).toEqual(['s2']);
+    expect(store.definition()!.fields.map((f) => f.stepId)).toEqual(['s2', 's2']);
+  });
+
+  it('removing the last step reverts to single-page and clears field steps', () => {
+    const store = new FormBuilderStore();
+    const def = makeForm([makeField('a')], [], { steps: [{ id: 's1', title: 'One' }] });
+    def.fields[0].stepId = 's1';
+    store.load(def);
+
+    store.removeStep('s1');
+    expect(store.definition()?.steps).toBeUndefined();
+    expect(store.definition()!.fields[0]).not.toHaveProperty('step');
+  });
+
+  it('ignores removing unknown step ids', () => {
+    const store = new FormBuilderStore();
+    const def = makeForm([makeField('a')], [], { steps: [{ id: 's1', title: 'One' }] });
+    store.load(def);
+    store.removeStep('ghost');
+    expect(store.steps()).toHaveLength(1);
+  });
+});
+
 describe('computeDropWindow', () => {
   // chain: s -> r -> d, plus independent roots x and y
   const chainDeps = [

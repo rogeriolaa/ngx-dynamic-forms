@@ -77,6 +77,41 @@ type BuilderStatus = 'loading' | 'ready' | 'blocked' | 'missing';
 
     .feedback { margin-top: 0.5rem; }
 
+    .steps-bar {
+      display: flex; align-items: center; gap: 0.75rem;
+      margin-top: 0.5rem;
+      padding: 0.5rem 0.625rem;
+      border: 1px dashed var(--ndf-border-strong);
+      border-radius: 8px;
+    }
+    :host-context(.app-dark) .steps-bar { border-color: var(--ndf-border); }
+    .steps-label {
+      display: inline-flex; align-items: center; gap: 0.375rem;
+      font-size: 0.6875rem; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--ndf-text-muted);
+      white-space: nowrap;
+    }
+    .steps-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
+    .step-chip {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      border: 1px solid var(--ndf-border);
+      border-radius: 8px;
+      padding: 0.25rem 0.375rem;
+    }
+    .step-index {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.125rem; height: 1.125rem;
+      border-radius: 999px;
+      background: var(--ndf-surface-alt);
+      font-size: 0.6875rem; font-weight: 700;
+      color: var(--ndf-text-muted);
+    }
+    .step-title {
+      width: 8rem; height: 1.75rem;
+      font-size: 0.8125rem; padding: 0.125rem 0.5rem;
+    }
+
     .issues-panel {
       margin-top: 0.5rem;
       padding: 0.75rem;

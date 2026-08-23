@@ -134,6 +134,40 @@ export function validateDefinition(def: FormDefinition): DefinitionIssue[] {
     }
   }
 
+  // wizard steps
+  const steps = def.steps ?? [];
+  if (steps.length > 0) {
+    const stepIds = new Set<string>();
+    for (const step of steps) {
+      if (!step.id?.trim()) {
+        issues.push({ severity: 'error', message: 'Every step needs an id.' });
+        continue;
+      }
+      if (stepIds.has(step.id)) {
+        issues.push({ severity: 'error', message: `Duplicate step id "${step.id}".` });
+      }
+      stepIds.add(step.id);
+      if (!step.title?.trim()) {
+        issues.push({ severity: 'warning', message: `Step "${step.id}" has no title.` });
+      }
+    }
+    for (const field of def.fields) {
+      if (field.stepId && !stepIds.has(field.stepId)) {
+        issues.push({
+          severity: 'error',
+          message: `"${field.label || field.id}" references missing step "${field.stepId}".`,
+          fieldId: field.id,
+        });
+      }
+    }
+  } else if (def.fields.some((f) => f.stepId)) {
+    issues.push({
+      severity: 'warning',
+      message:
+        'Fields reference steps but the form has no steps — everything renders on a single page.',
+    });
+  }
+
   if (def.dependencies.length > 0) {
     const byId = new Map(def.fields.map((f) => [f.id, f]));
 

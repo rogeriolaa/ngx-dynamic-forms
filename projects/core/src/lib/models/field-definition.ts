@@ -67,6 +67,21 @@ export interface FieldDefinition {
   pattern?: string;
   /** textarea */
   rows?: number;
+
+  /**
+   * Wizard page this field belongs to (matches `FormDefinition.steps[].id`).
+   * Fields without an explicit step fall into the FIRST step when the form
+   * is multi-step; ignored on single-page forms. Named `stepId` because
+   * `step` is already the numeric increment of number/slider/rating fields.
+   */
+  stepId?: string;
+}
+
+/** Named page of a multi-step (wizard) form. Order in the array = order shown. */
+export interface FormStep {
+  /** Stable identifier referenced by `FieldDefinition.step`. Immutable once created. */
+  id: string;
+  title: string;
 }
 
 export type FormStatus = 'draft' | 'published' | 'archived';
@@ -82,6 +97,12 @@ export interface FormDefinition {
   title: string;
   description?: string;
   fields: FieldDefinition[];
+  /**
+   * Optional wizard steps. When present, the responder renders one step at a
+   * time and `FieldDefinition.step` assigns each field to a page. Absent or
+   * empty → single-page form (all fields at once).
+   */
+  steps?: FormStep[];
   /**
    * Dependency rules in the exact shape consumed by
    * `FormDependencyEngine` from `@n0n3br/ngx-form-dependency-engine`.

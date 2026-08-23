@@ -5,10 +5,12 @@ import {
   FieldType,
   FormDefinition,
 } from '@n0n3br/ngx-dynamic-forms-core';
+import type { FormStep } from '@n0n3br/ngx-dynamic-forms-core';
 import { validateDefinition, DefinitionIssue } from '@n0n3br/ngx-dynamic-forms-core';
 import { computeDependencyDepths } from '@n0n3br/ngx-dynamic-forms-core';
 
 let fieldCounter = 0;
+let stepCounter = 0;
 
 /**
  * Client-side editing state for the designer. Pure signals — no persistence
@@ -110,11 +112,14 @@ export class FormBuilderStore {
   addField(type: FieldType, meta: { defaultConfig: Partial<FieldDefinition> }): void {
     this.checkpoint();
     fieldCounter += 1;
+    const def = this.definition();
     const field: FieldDefinition = {
       id: `${type}_${Date.now().toString(36)}${fieldCounter}`,
       type,
       label: '',
       columns: 12,
+      // new fields land on the first wizard page when the form is multi-step
+      ...(def?.steps?.length ? { stepId: def.steps[0].id } : {}),
       ...meta.defaultConfig,
     };
     this.definition.update((def) =>
@@ -229,5 +234,79 @@ export class FormBuilderStore {
 
   setDependencies(dependencies: Dependency[]): void {
     this.patchDefinition({ dependencies });
+  }
+
+  // ---------- wizard steps ----------
+
+  readonly steps = computed<FormStep[]>(() => this.definition()?.steps ?? []);
+
+  addStep(): void {
+    this.checkpoint();
+    stepCounter += 1;
+    this.definition.update((def) => {
+      if (!def) return def;
+      const steps = def.steps ?? [];
+      return {
+        ...def,
+        steps: [...steps, { id: `step_${Date.now().toString(36)}${stepCounter}`, title: `Step ${steps.length + 1}` }],
+      };
+    });
+    this.revision.update((v) => v + 1);
+  }
+
+  renameStep(id: string, title: string): void {
+    this.checkpoint();
+    this.definition.update((def) =>
+      def
+        ? {
+            ...def,
+            steps: (def.steps ?? []).map((s) => (s.id === id ? { ...s, title } : s)),
+          }
+        : def,
+    );
+    this.revision.update((v) => v + 1);
+  }
+
+  moveStep(id: string, direction: -1 | 1): void {
+    this.checkpoint();
+    this.definition.update((def) => {
+      if (!def?.steps) return def;
+      const index = def.steps.findIndex((s) => s.id === id);
+      const target = index + direction;
+      if (index < 0 || target < 0 || target >= def.steps.length) return def;
+      const steps = [...def.steps];
+      [steps[index], steps[target]] = [steps[target], steps[index]];
+      return { ...def, steps };
+    });
+    this.revision.update((v) => v + 1);
+  }
+
+  /** Removing a step reassigns its fields to the new FIRST step; dropping the last step reverts the form to single-page. */
+  removeStep(id: string): void {
+    this.checkpoint();
+    this.definition.update((def) => {
+      if (!def) return def;
+      const remaining = (def.steps ?? []).filter((s) => s.id !== id);
+      if (remaining.length === (def.steps ?? []).length) return def;
+
+      let fields = def.fields;
+      let steps: FormStep[] | undefined = remaining;
+      if (remaining.length === 0) {
+        steps = undefined;
+        fields = def.fields.map(({ stepId: _stepId, ...f }) => f);
+      } else {
+        fields = def.fields.map((f) =>
+          f.stepId === id || !remaining.some((s) => s.id === f.stepId)
+            ? { ...f, stepId: remaining[0].id }
+            : f,
+        );
+      }
+      return { ...def, steps, fields };
+    });
+    this.revision.update((v) => v + 1);
+  }
+
+  assignFieldToStep(fieldId: string, stepId: string | undefined): void {
+    this.updateField(fieldId, { stepId });
   }
 }

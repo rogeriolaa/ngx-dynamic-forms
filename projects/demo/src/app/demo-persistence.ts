@@ -59,12 +59,17 @@ function buildSeedForms(): FormDefinition[] {
       status: 'published',
       title: 'Customer satisfaction survey',
       description: 'Tell us how we are doing — takes about a minute.',
+      steps: [
+        { id: 'about', title: 'About you' },
+        { id: 'feedback', title: 'Your feedback' },
+        { id: 'wrapup', title: 'Wrap up' },
+      ],
       createdAt: now,
       updatedAt: now,
       createdBy: 'seed',
       publishedAt: now,
       fields: [
-        { id: 'name', type: 'text', label: 'Your name', placeholder: 'Jane Doe', columns: 6 },
+        { id: 'name', type: 'text', label: 'Your name', placeholder: 'Jane Doe', columns: 6, stepId: 'about' },
         {
           id: 'email',
           type: 'email',
@@ -72,6 +77,7 @@ function buildSeedForms(): FormDefinition[] {
           placeholder: 'you@example.com',
           required: true,
           columns: 6,
+          stepId: 'about',
         },
         {
           id: 'satisfied',
@@ -80,6 +86,7 @@ function buildSeedForms(): FormDefinition[] {
           required: true,
           defaultValue: 'yes',
           columns: 12,
+          stepId: 'feedback',
           options: opts('yes', 'no'),
         },
         {
@@ -88,6 +95,7 @@ function buildSeedForms(): FormDefinition[] {
           label: 'What fell short?',
           helpText: 'Shown when you are not satisfied.',
           columns: 6,
+          stepId: 'feedback',
           options: opts('price', 'features', 'support', 'other'),
         },
         {
@@ -97,14 +105,16 @@ function buildSeedForms(): FormDefinition[] {
           helpText: 'Shown when support is the issue.',
           rows: 3,
           columns: 8,
+          stepId: 'feedback',
         },
-        { id: 'rating', type: 'rating', label: 'Overall score', max: 5, columns: 6 },
+        { id: 'rating', type: 'rating', label: 'Overall score', max: 5, columns: 6, stepId: 'wrapup' },
         {
           id: 'recommend',
           type: 'checkbox',
           label: '',
           placeholder: 'I would recommend this product',
           columns: 12,
+          stepId: 'wrapup',
         },
         {
           id: 'newsletter-source',

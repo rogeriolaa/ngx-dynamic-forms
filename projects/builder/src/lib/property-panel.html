@@ -110,6 +110,24 @@
                 }
               </select>
 
+              <!-- wizard step assignment -->
+              @if (store.steps().length > 0 && f.type !== 'hidden') {
+                <div>
+                  <label class="field-label">Wizard step</label>
+                  <select
+                    class="ndf-select"
+                    [ngModel]="f.stepId ?? ''"
+                    (ngModelChange)="update({ stepId: $event === '' ? undefined : $event })"
+                    [attr.data-testid]="'prop-step-' + f.id"
+                  >
+                    <option value="">Auto (first step)</option>
+                    @for (step of store.steps(); track step.id; let i = $index) {
+                      <option [value]="step.id">{{ i + 1 }}. {{ step.title || step.id }}</option>
+                    }
+                  </select>
+                </div>
+              }
+
               <!-- default value for checkbox -->
               @if (f.type === 'checkbox') {
                 <label class="flag-row">

@@ -111,6 +111,48 @@ describe('validateDefinition', () => {
   });
 });
 
+describe('validateDefinition — wizard steps', () => {
+  it('accepts a clean multi-step form (fields may omit step → first)', () => {
+    const def = makeForm(
+      [makeField('a'), makeField('b', 'text', { stepId: 's2' })],
+      [],
+      { steps: [{ id: 's1', title: 'One' }, { id: 's2', title: 'Two' }] },
+    );
+    expect(validateDefinition(def)).toEqual([]);
+  });
+
+  it('rejects duplicate step ids', () => {
+    const def = makeForm([makeField('a')], [], {
+      steps: [
+        { id: 's1', title: 'One' },
+        { id: 's1', title: 'Two' },
+      ],
+    });
+    expect(errorMessages(validateDefinition(def)).some((m) => m.includes('Duplicate step'))).toBe(
+      true,
+    );
+  });
+
+  it('rejects fields referencing missing steps', () => {
+    const def = makeForm([makeField('a', 'text', { stepId: 'ghost' })], [], {
+      steps: [{ id: 's1', title: 'One' }],
+    });
+    expect(errorMessages(validateDefinition(def)).some((m) => m.includes('ghost'))).toBe(true);
+  });
+
+  it('warns when steps exist without titles', () => {
+    const def = makeForm([makeField('a')], [], { steps: [{ id: 's1', title: '' }] });
+    const warnings = validateDefinition(def).filter((i) => i.severity === 'warning');
+    expect(warnings.some((w) => w.message.includes('no title'))).toBe(true);
+  });
+
+  it('warns when fields reference steps but the form defines none', () => {
+    const def = makeForm([makeField('a', 'text', { stepId: 's9' })]);
+    const warnings = validateDefinition(def).filter((i) => i.severity === 'warning');
+    expect(warnings.some((w) => w.message.includes('no steps'))).toBe(true);
+  });
+});
+
 describe('topologicalSort / collectConditionFields', () => {
   it('collects fields from nested condition groups', () => {
     const dep = showWhen('outer', '1', 't');

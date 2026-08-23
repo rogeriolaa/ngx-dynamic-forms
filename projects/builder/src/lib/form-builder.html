@@ -159,6 +159,62 @@
           </div>
         }
 
+        <!-- wizard steps bar (design mode) -->
+        @if (!store.previewMode()) {
+          <div class="steps-bar" data-testid="steps-bar">
+            <span class="steps-label"><ndf-icon name="list" /> Steps</span>
+            <div class="steps-chips">
+              @for (step of store.steps(); track step.id; let i = $index) {
+                <div class="step-chip">
+                  <span class="step-index">{{ i + 1 }}</span>
+                  <input
+                    class="ndf-input step-title"
+                    [ngModel]="step.title"
+                    (ngModelChange)="store.renameStep(step.id, $event)"
+                    [attr.data-testid]="'step-title-' + i"
+                    [attr.aria-label]="'Title of step ' + (i + 1)"
+                  />
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    title="Move step up"
+                    [disabled]="i === 0"
+                    (click)="store.moveStep(step.id, -1)"
+                  >
+                    <ndf-icon name="arrow-up" />
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    title="Move step down"
+                    [disabled]="i === store.steps().length - 1"
+                    (click)="store.moveStep(step.id, 1)"
+                  >
+                    <ndf-icon name="arrow-down" />
+                  </button>
+                  <button
+                    type="button"
+                    class="icon-btn"
+                    title="Remove step"
+                    [attr.data-testid]="'step-remove-' + i"
+                    (click)="store.removeStep(step.id)"
+                  >
+                    <ndf-icon name="trash" />
+                  </button>
+                </div>
+              }
+              <button
+                type="button"
+                class="ndf-btn ndf-btn--ghost ndf-btn--sm"
+                data-testid="add-step-btn"
+                (click)="store.addStep()"
+              >
+                <ndf-icon name="plus" /> Add step
+              </button>
+            </div>
+          </div>
+        }
+
         <!-- ===== body ===== -->
         <div class="builder-body" [class.design]="!store.previewMode()" [class.previewing]="store.previewMode()">
           @if (!store.previewMode()) {

@@ -26,6 +26,7 @@ export * from './lib/icons/ndf-icon';
 // Shared field runtime (FormGroup build + renderers)
 // Used by the responder AND the builder's live preview.
 export * from './lib/runtime/form-group-builder';
+export * from './lib/runtime/wizard';
 export * from './lib/runtime/fields/field-shell';
 export * from './lib/runtime/fields/text-fields';
 export * from './lib/runtime/fields/number-fields';

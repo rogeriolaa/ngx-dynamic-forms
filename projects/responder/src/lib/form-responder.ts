@@ -19,6 +19,7 @@ import {
   FormDefinition,
   FormResponse,
   FormResponseDraft,
+  FormStep,
   FORM_DEFINITION_REPOSITORY,
   FORM_RESPONSE_REPOSITORY,
   FieldHost,
@@ -29,7 +30,11 @@ import {
   buildFormGroup,
   computeDependencyDepths,
   deserializeValues,
+  fieldsOfStep,
+  invalidStepFieldIds,
+  isStepFieldsValid,
   mergeDraftValues,
+  resolveFieldStepId,
   resolvePermissions,
   serializeValues,
 } from '@n0n3br/ngx-dynamic-forms-core';
@@ -71,6 +76,36 @@ interface DraftPromptData {
     .form-head h2 { margin: 0; font-size: 1.25rem; }
     .form-desc { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--ndf-text-muted); }
     .form-version { margin: 0.25rem 0 0; font-size: 0.75rem; color: var(--ndf-text-muted); }
+
+    .stepper {
+      display: flex; flex-wrap: wrap; gap: 0.375rem;
+      list-style: none; margin: 0; padding: 0;
+    }
+    .step-pill {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      border: 1px solid var(--ndf-border);
+      border-radius: 999px;
+      background: transparent;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      color: var(--ndf-text-muted);
+    }
+    .step-pill:hover { color: var(--ndf-text); }
+    .step-pill.active {
+      border-color: var(--p-primary-500);
+      color: var(--p-primary-600);
+      font-weight: 600;
+    }
+    :host-context(.app-dark) .step-pill.active { color: var(--p-primary-400); }
+    .step-pill.done { color: var(--ndf-success); }
+    .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 1.125rem; height: 1.125rem;
+      border-radius: 999px;
+      background: var(--ndf-surface-alt);
+      font-size: 0.6875rem; font-weight: 700;
+    }
 
     .field-grid {
       display: grid;
@@ -161,6 +196,8 @@ export class FormResponder {
   readonly lastSavedAt = signal<string | null>(null);
   readonly draftPrompt = signal<DraftPromptData | null>(null);
   readonly saveState = signal<'idle' | 'saving' | 'saved' | 'pending'>('idle');
+  /** Active wizard page (0-based). Ignored on single-page forms. */
+  readonly currentStepIndex = signal(0);
 
   private engine: FormDependencyEngine | null = null;
   private engineSubscription: Subscription | null = null;
@@ -231,6 +268,7 @@ export class FormResponder {
     this.form.set(built.group);
     this.staticallyDisabled = built.staticallyDisabled;
     this.definitionState.set(structuredClone(def));
+    this.currentStepIndex.set(0);
 
     this.teardownEngine();
 
@@ -304,6 +342,86 @@ export class FormResponder {
   });
 
   readonly canPersist = computed(() => !!this.responsesRepo && !!this.definitionState());
+
+  /** Wizard pages, or null when the form renders on a single page. */
+  readonly steps = computed<FormStep[] | null>(() => {
+    const def = this.definitionState();
+    return def && def.steps && def.steps.length > 0 ? def.steps : null;
+  });
+
+  readonly currentStepId = computed<string | null>(() => {
+    const steps = this.steps();
+    if (!steps) return null;
+    const i = this.currentStepIndex();
+    return steps[Math.min(Math.max(i, 0), steps.length - 1)].id;
+  });
+
+  readonly isLastStep = computed(() => {
+    const steps = this.steps();
+    return !steps || this.currentStepIndex() >= steps.length - 1;
+  });
+
+  /**
+   * Rows for the CURRENT wizard page only. Single-page forms pass through
+   * untouched.
+   */
+  readonly visibleRows = computed(() => {
+    const rows = this.layoutRows();
+    const stepId = this.currentStepId();
+    if (!stepId) return rows;
+    return rows.filter((row) => resolveFieldStepId(row.field, this.steps() ?? undefined) === stepId);
+  });
+
+  // ---------- wizard navigation ----------
+
+  /** Validates the current page; true when "Next" may advance. */
+  canGoNext(): boolean {
+    const def = this.definitionState();
+    const group = this.form();
+    const stepId = this.currentStepId();
+    if (!def || !group || !stepId) return false;
+    return isStepFieldsValid(def.fields, this.steps() ?? undefined, stepId, group);
+  }
+
+  goNext(): void {
+    this.goToStep(this.currentStepIndex() + 1);
+  }
+
+  goBack(): void {
+    if (this.currentStepIndex() > 0) {
+      this.currentStepIndex.update((i) => i - 1);
+      this.validationErrors.set([]);
+    }
+  }
+
+  /**
+   * Jump to any earlier page freely; forward jumps walk every intermediate
+   * page and stop at the first invalid one (marking its fields touched).
+   */
+  goToStep(target: number): void {
+    const steps = this.steps();
+    const def = this.definitionState();
+    const group = this.form();
+    if (!steps || !def || !group) return;
+    if (target < 0 || target >= steps.length) return;
+
+    let cursor = this.currentStepIndex();
+    while (cursor < target) {
+      const stepId = steps[cursor].id;
+      if (!isStepFieldsValid(def.fields, steps ?? undefined, stepId, group)) {
+        const badIds: string[] = invalidStepFieldIds(def.fields, steps ?? undefined, stepId, group);
+        badIds.forEach((id) => group.controls[id]?.markAsTouched());
+        this.validationErrors.set(
+          badIds.map((id) => def.fields.find((f) => f.id === id)?.label ?? id),
+        );
+        this.currentStepIndex.set(cursor);
+        return;
+      }
+      cursor += 1;
+    }
+    this.currentStepIndex.set(target);
+    this.validationErrors.set([]);
+  }
 
   /** Submit stays disabled while any visible field fails its validators. */
   readonly canSubmit = computed(() => {

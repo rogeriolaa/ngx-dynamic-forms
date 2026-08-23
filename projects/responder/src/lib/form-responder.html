@@ -43,6 +43,28 @@
           <p class="form-version">Version {{ def.version }}</p>
         </header>
 
+        <!-- wizard stepper -->
+        @if (steps(); as stepList) {
+          <ol class="stepper" data-testid="wizard-stepper">
+            @for (s of stepList; track s.id; let i = $index) {
+              <li class="step-item">
+                <button
+                  type="button"
+                  class="step-pill"
+                  [class.active]="i === currentStepIndex()"
+                  [class.done]="i < currentStepIndex()"
+                  [attr.aria-current]="i === currentStepIndex() ? 'step' : null"
+                  [attr.data-testid]="'step-pill-' + i"
+                  (click)="goToStep(i)"
+                >
+                  <span class="step-num">{{ i < currentStepIndex() ? '✓' : i + 1 }}</span>
+                  {{ s.title || s.id }}
+                </button>
+              </li>
+            }
+          </ol>
+        }
+
         <!-- resume draft prompt -->
         @if (draftPrompt(); as prompt) {
           <div class="modal-backdrop" data-testid="draft-dialog">
@@ -72,7 +94,7 @@
         }
 
         <div class="field-grid">
-          @for (row of layoutRows(); track row.field.id) {
+          @for (row of visibleRows(); track row.field.id) {
             @if (row.field.type === 'section') {
               <div
                 class="section-cell"
@@ -118,9 +140,32 @@
                 <ndf-icon name="save" /> Save & continue later
               </button>
             }
-            <button type="submit" class="ndf-btn" [disabled]="!canSubmit()" data-testid="submit-btn" (click)="submit()">
-              <ndf-icon name="send" /> Submit
-            </button>
+            @if (steps(); as stepList) {
+              <button
+                type="button"
+                class="ndf-btn ndf-btn--secondary"
+                [disabled]="currentStepIndex() === 0"
+                data-testid="wizard-back-btn"
+                (click)="goBack()"
+              >
+                Back
+              </button>
+              @if (!isLastStep()) {
+                <button
+                  type="button"
+                  class="ndf-btn"
+                  data-testid="wizard-next-btn"
+                  (click)="goNext()"
+                >
+                  Next <ndf-icon name="arrow-right" />
+                </button>
+              }
+            }
+            @if (isLastStep()) {
+              <button type="submit" class="ndf-btn" [disabled]="!canSubmit()" data-testid="submit-btn" (click)="submit()">
+                <ndf-icon name="send" /> Submit
+              </button>
+            }
           </div>
         </footer>
       </form>
