@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import type { Dependency } from '@n0n3br/ngx-form-dependency-engine';
 import { FormDependencyEngine } from '@n0n3br/ngx-form-dependency-engine';
 import {
@@ -160,6 +161,13 @@ export class BuilderPreview {
   private engine: FormDependencyEngine | null = null;
   /** Signal mirror for the template (rule inspector reads lastTrace()). */
   protected readonly engineState = signal<FormDependencyEngine | null>(null);
+  /**
+   * Bumped on every answer change. The engine mutates its hidden-set in
+   * place (no signal emission), so visibility needs an explicit trigger
+   * that fires AFTER the engine's own valueChanges subscriber ran.
+   */
+  private readonly evalTick = signal(0);
+  private valueSub: Subscription | null = null;
   private staticDisabled = new Set<string>();
   private destroyRef = inject(DestroyRef);
 
@@ -172,20 +180,24 @@ export class BuilderPreview {
   });
 
   readonly hiddenCount = computed(() => {
+    this.evalTick(); // stay live across engine passes
     const engine = this.engineState();
     if (!engine) return 0;
-    engine.settled(); // track evaluation passes so the count stays live
     return this.definition().fields.filter(
-      (f) => f.type !== 'section' && engine.isHidden(f.id),
+      (f) => f.type !== 'section' && engine.hiddenFields().has(f.id),
     ).length;
   });
 
   constructor() {
     effect(() => this.rebuild(this.definition()));
-    this.destroyRef.onDestroy(() => this.engine?.destroy());
+    this.destroyRef.onDestroy(() => {
+      this.valueSub?.unsubscribe();
+      this.engine?.destroy();
+    });
   }
 
   private rebuild(def: FormDefinition): void {
+    this.valueSub?.unsubscribe();
     this.engine?.destroy();
     const built = buildFormGroup(def);
     this.form.set(built.group);
@@ -195,12 +207,17 @@ export class BuilderPreview {
       trace: true,
     });
     engine.activate();
+    // subscribed AFTER engine.activate() → runs post-evaluation
+    this.valueSub = built.group.valueChanges.subscribe(() =>
+      this.evalTick.update((v) => v + 1),
+    );
     this.engine = engine;
     this.engineState.set(engine);
   }
 
   isHidden(fieldId: string): boolean {
-    return this.engineState()?.isHidden(fieldId) ?? false;
+    this.evalTick();
+    return this.engineState()?.hiddenFields().has(fieldId) ?? false;
   }
 
   hiddenByRule(field: FieldDefinition): boolean {
