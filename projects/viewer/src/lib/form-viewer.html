@@ -6,8 +6,8 @@
     <div class="ndf-card" data-testid="viewer-blocked">
       <div class="state-card">
         <ndf-icon name="lock" class="state-icon" />
-        <h3>Not authorized</h3>
-        <p>You don't have permission to view this answer.</p>
+        <h3>{{ t.viewerBlockedTitle }}</h3>
+        <p>{{ t.viewerBlockedBody }}</p>
       </div>
     </div>
   }
@@ -15,8 +15,8 @@
     <div class="ndf-card" data-testid="viewer-missing">
       <div class="state-card">
         <ndf-icon name="warning" class="state-icon" />
-        <h3>Answer not found</h3>
-        <p>It may have been deleted.</p>
+        <h3>{{ t.viewerMissingTitle }}</h3>
+        <p>{{ t.viewerMissingBody }}</p>
       </div>
     </div>
   }
@@ -35,14 +35,14 @@
               >v{{ response.formVersion }}</span>
               @if (staleVersion()) {
                 <span class="stale-note" data-testid="stale-version-note">
-                  answered against an older version (latest: v{{ latestPublishedVersion() }})
+                  {{ staleVersionText() }}
                 </span>
               }
             </div>
             @if (def.description) {
               <p class="viewer-desc">{{ def.description }}</p>
             }
-            <p class="submitted-at">Submitted {{ submittedLabel() }}</p>
+            <p class="submitted-at">{{ submittedLabel() }}</p>
           </header>
 
           <dl class="value-list">
@@ -69,7 +69,7 @@
           </dl>
 
           @if (rows().length === 0) {
-            <div class="ndf-alert">This answer is empty.</div>
+            <div class="ndf-alert">{{ t.viewerEmpty }}</div>
           }
         </div>
       }

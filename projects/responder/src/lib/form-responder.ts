@@ -27,6 +27,7 @@ import {
   PermissionsInput,
   ResolvedPermissions,
   DraftMergeReport,
+  NDF_LOCALE,
   buildFormGroup,
   computeDependencyDepths,
   deserializeValues,
@@ -37,6 +38,7 @@ import {
   resolveFieldStepId,
   resolvePermissions,
   serializeValues,
+  interpolate,
 } from '@n0n3br/ngx-dynamic-forms-core';
 import { NdfIcon } from '@n0n3br/ngx-dynamic-forms-core';
 
@@ -184,6 +186,8 @@ export class FormResponder {
   private readonly definitionsRepo = inject(FORM_DEFINITION_REPOSITORY, { optional: true });
   private readonly responsesRepo = inject(FORM_RESPONSE_REPOSITORY, { optional: true });
   private readonly service = inject(NgxFormsService);
+  /** UI strings — override app-wide with `provideNdfLocale('pt-BR')`. */
+  readonly t = inject(NDF_LOCALE);
   private readonly destroyRef = inject(DestroyRef);
 
   // ---------- state ----------
@@ -434,15 +438,38 @@ export class FormResponder {
   readonly saveStateLabel = computed(() => {
     switch (this.saveState()) {
       case 'saving':
-        return 'Saving…';
+        return this.t.saving;
       case 'saved':
-        return `Draft saved ${this.lastSavedAt() ?? ''}`;
+        return interpolate(this.t.savedDraft, { time: this.lastSavedAt() ?? '' });
       case 'pending':
-        return 'Unsaved changes…';
+        return this.t.unsavedChanges;
       default:
         return '';
     }
   });
+
+  /** Rendered validation summary line for the current invalid fields. */
+  validationSummaryText(): string {
+    return interpolate(this.t.validationSummary, {
+      count: this.validationErrors().length,
+      fields: this.validationErrors().join(', '),
+    });
+  }
+
+  draftBodyText(prompt: DraftPromptData): string {
+    return interpolate(this.t.draftBody, { savedAt: prompt.savedAt });
+  }
+
+  mergeWarningText(prompt: DraftPromptData): string {
+    return interpolate(this.t.draftMergeWarning, {
+      restored: prompt.report.restored.length,
+      dropped: this.droppedList(prompt),
+    });
+  }
+
+  submittedBodyText(): string {
+    return interpolate(this.t.submittedBody, { version: this.submittedVersion() });
+  }
 
   isHidden(fieldId: string): boolean {
     return this.engine?.isHidden(fieldId) ?? false;

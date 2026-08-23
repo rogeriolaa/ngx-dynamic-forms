@@ -6,8 +6,8 @@
     <div class="ndf-card" data-testid="responder-blocked">
       <div class="state-card">
         <ndf-icon name="lock" [style.--ndf-icon-size]="'2rem'" />
-        <h3>Not authorized</h3>
-        <p>You don't have permission to answer this form.</p>
+        <h3>{{ t.blockedTitle }}</h3>
+        <p>{{ t.blockedBody }}</p>
       </div>
     </div>
   }
@@ -15,8 +15,8 @@
     <div class="ndf-card" data-testid="responder-missing">
       <div class="state-card">
         <ndf-icon name="warning" [style.--ndf-icon-size]="'2rem'" />
-        <h3>Form not available</h3>
-        <p>This form has no published version yet.</p>
+        <h3>{{ t.missingTitle }}</h3>
+        <p>{{ t.missingBody }}</p>
       </div>
     </div>
   }
@@ -24,10 +24,9 @@
     <div class="ndf-card" data-testid="responder-submitted">
       <div class="state-card">
         <ndf-icon name="check-circle" class="state-success" [style.--ndf-icon-size]="'2.75rem'" />
-        <h3>Answer submitted</h3>
+        <h3>{{ t.submittedTitle }}</h3>
         <p>
-          Thank you! Your answers were recorded against version
-          {{ submittedVersion() }} of this form.
+          {{ submittedBodyText() }}
         </p>
       </div>
     </div>
@@ -69,24 +68,21 @@
         @if (draftPrompt(); as prompt) {
           <div class="modal-backdrop" data-testid="draft-dialog">
             <div class="modal">
-              <h3>Draft found</h3>
+              <h3>{{ t.draftTitle }}</h3>
               <p class="modal-text" data-testid="draft-dialog-text">
-                You have a saved draft for this form (saved {{ prompt.savedAt }}).
-                Load your previous answers or start over?
+                {{ draftBodyText(prompt) }}
               </p>
               @if (prompt.report.dropped.length > 0) {
                 <div class="ndf-alert ndf-alert--warn merge-warning" data-testid="draft-merge-warning">
-                  The form changed since your draft —
-                  {{ prompt.report.restored.length }} value(s) restored,
-                  dropped: {{ droppedList(prompt) }}.
+                  {{ mergeWarningText(prompt) }}
                 </div>
               }
               <div class="dialog-actions">
                 <button type="button" class="ndf-btn ndf-btn--secondary" data-testid="draft-start-over" (click)="startOver()">
-                  Start over
+                  {{ t.draftStartOver }}
                 </button>
                 <button type="button" class="ndf-btn" data-testid="draft-load" (click)="loadDraft()">
-                  Load draft
+                  {{ t.draftLoad }}
                 </button>
               </div>
             </div>
@@ -121,8 +117,7 @@
 
         @if (validationErrors().length > 0) {
           <div class="ndf-alert ndf-alert--error" role="alert" data-testid="validation-summary">
-            Please fix {{ validationErrors().length }} highlighted field(s):
-            {{ validationErrors().join(', ') }}
+            {{ validationSummaryText() }}
           </div>
         }
 
@@ -137,7 +132,7 @@
                 data-testid="save-draft-btn"
                 (click)="saveDraftExplicit()"
               >
-                <ndf-icon name="save" /> Save & continue later
+                <ndf-icon name="save" /> {{ t.saveDraft }}
               </button>
             }
             @if (steps(); as stepList) {
@@ -148,7 +143,7 @@
                 data-testid="wizard-back-btn"
                 (click)="goBack()"
               >
-                Back
+                {{ t.back }}
               </button>
               @if (!isLastStep()) {
                 <button
@@ -157,13 +152,13 @@
                   data-testid="wizard-next-btn"
                   (click)="goNext()"
                 >
-                  Next <ndf-icon name="arrow-right" />
+                  {{ t.next }} <ndf-icon name="arrow-right" />
                 </button>
               }
             }
             @if (isLastStep()) {
               <button type="submit" class="ndf-btn" [disabled]="!canSubmit()" data-testid="submit-btn" (click)="submit()">
-                <ndf-icon name="send" /> Submit
+                <ndf-icon name="send" /> {{ t.submit }}
               </button>
             }
           </div>

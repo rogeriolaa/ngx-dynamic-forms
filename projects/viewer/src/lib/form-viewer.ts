@@ -16,10 +16,12 @@ import {
   FormResponse,
   FORM_DEFINITION_REPOSITORY,
   FORM_RESPONSE_REPOSITORY,
+  NDF_LOCALE,
   NgxFormsService,
   PermissionsInput,
   computeDependencyDepths,
   formatValue,
+  interpolate,
   resolvePermissions,
 } from '@n0n3br/ngx-dynamic-forms-core';
 
@@ -95,6 +97,8 @@ export class FormViewer {
   private readonly definitionsRepo = inject(FORM_DEFINITION_REPOSITORY, { optional: true });
   private readonly responsesRepo = inject(FORM_RESPONSE_REPOSITORY, { optional: true });
   private readonly service = inject(NgxFormsService);
+  /** UI strings — override app-wide with `provideNdfLocale('pt-BR')`. */
+  readonly t = inject(NDF_LOCALE);
 
   readonly status = signal<'loading' | 'ready' | 'blocked' | 'missing'>('loading');
   readonly responseData = signal<FormResponse | null>(null);
@@ -193,8 +197,12 @@ export class FormViewer {
 
   readonly submittedLabel = computed(() => {
     const response = this.responseData();
-    return response ? new Date(response.submittedAt).toLocaleString() : '';
+    return response ? `${this.t.viewerSubmittedAt} ${new Date(response.submittedAt).toLocaleString()}` : this.t.viewerSubmittedAt;
   });
+
+  staleVersionText(): string {
+    return interpolate(this.t.viewerStaleVersion, { latest: this.latestPublishedVersion() ?? '?' });
+  }
 }
 
 /** Inline image for upload/signature answers; undefined → text rendering. */

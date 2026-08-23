@@ -24,6 +24,9 @@ export * from './lib/registry/field-type-registry';
 // Icon set (inline SVG, no icon-font dependency)
 export * from './lib/icons/ndf-icon';
 
+// i18n — locale dictionaries + DI wiring
+export * from './lib/i18n/ndf-locale';
+
 // Shared field runtime (FormGroup build + renderers)
 // Used by the responder AND the builder's live preview.
 export * from './lib/runtime/form-group-builder';
