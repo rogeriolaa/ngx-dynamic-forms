@@ -597,10 +597,16 @@ export class FormResponder {
 
   // ---------- submit ----------
 
+  /** Guards against double-fire: the footer button is type=submit AND has a
+   * (click) handler, so ngSubmit + click both call submit() before the
+   * status signal flips. */
+  private submitting = false;
+
   submit(): void {
     const group = this.form();
     const def = this.definitionState();
-    if (!group || !def) return;
+    if (!group || !def || this.submitting || this.status() === 'submitted') return;
+    this.submitting = true;
 
     this.engine?.reevaluate();
 
@@ -609,6 +615,7 @@ export class FormResponder {
       .map(([id]) => id);
 
     if (invalidIds.length > 0) {
+      this.submitting = false; // allow retry after fixes
       group.markAllAsTouched();
       this.validationErrors.set(
         invalidIds.map((id) => def.fields.find((f) => f.id === id)?.label ?? id),
@@ -646,6 +653,9 @@ export class FormResponder {
       .then((result) => {
         this.activeDraftId = null;
         finalize(result.response);
+      })
+      .catch(() => {
+        this.submitting = false; // persist failed — let the user retry
       });
   }
 }
