@@ -39,6 +39,7 @@ export * from './lib/runtime/fields/field-host';
 // Persistence ports, default IndexedDB implementation, DI helpers
 export * from './lib/persistence/repository';
 export * from './lib/persistence/indexeddb-repository';
+export * from './lib/persistence/http-repositories';
 export * from './lib/persistence/provide';
 export * from './lib/persistence/forms-service';
 
