@@ -28,11 +28,12 @@ jobs:
       - name: Publish (core → responder → builder → viewer)
         run: |
           for lib in core responder builder viewer; do
-            if npm view "$(node -p "require('./dist/' + process.argv[1] + '/package.json').name")" version \
-               --json 2>/dev/null | grep -qF "\"$(node -p "require('./dist/' + process.argv[1] + '/package.json').version")\""; then
-              echo "dist/$lib already published — skipping"
+            name=$(node -p "require('./dist/$lib/package.json').name")
+            version=$(node -p "require('./dist/$lib/package.json').version")
+            if npm view "$name" version 2>/dev/null | grep -qF "$version"; then
+              echo "$name@$version already published — skipping"
             else
-              npm publish dist/$lib --access public
+              npm publish "./dist/$lib" --access public
             fi
           done
         env:
