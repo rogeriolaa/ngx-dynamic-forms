@@ -14,7 +14,7 @@
     "@angular/common": "^22.0.0",
     "@angular/core": "^22.0.0",
     "@angular/forms": "^22.0.0",
-    "@n0n3br/ngx-form-dependency-engine": "^0.0.4"
+    "@n0n3br/ngx-form-dependency-engine": "^0.0.5"
   },
   "dependencies": {
     "idb": "^8.0.0",
