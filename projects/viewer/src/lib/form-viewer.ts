@@ -11,7 +11,6 @@ import {
 import {
   FieldDefinition,
   NdfIcon,
-  FieldOption,
   FieldType,
   FormDefinition,
   FormResponse,
@@ -20,8 +19,12 @@ import {
   NgxFormsService,
   PermissionsInput,
   computeDependencyDepths,
+  formatValue,
   resolvePermissions,
 } from '@n0n3br/ngx-dynamic-forms-core';
+
+// Back-compat re-export — the canonical home is core's format-values module.
+export { formatValue, labelFor } from '@n0n3br/ngx-dynamic-forms-core';
 
 
 interface DisplayRow {
@@ -194,36 +197,6 @@ export class FormViewer {
   });
 }
 
-export function formatValue(field: FieldDefinition, value: unknown): string {
-  if (value === null || value === undefined || value === '') return '—';
-
-  switch (field.type) {
-    case 'checkbox':
-      return value === true ? 'Yes' : 'No';
-    case 'multi-select':
-    case 'checkbox-group': {
-      const selected = Array.isArray(value) ? value : [];
-      if (selected.length === 0) return '—';
-      return selected.map((v) => labelFor(field, v)).join(', ');
-    }
-    case 'radio':
-    case 'dropdown':
-      return labelFor(field, value);
-    case 'rating': {
-      const n = Math.max(0, Math.min(Number(value), field.max ?? 5));
-      return '★'.repeat(n) + '☆'.repeat(Math.max(0, (field.max ?? 5) - n));
-    }
-    case 'date':
-      return typeof value === 'string' ? new Date(value).toLocaleDateString() : String(value);
-    case 'signature':
-      return typeof value === 'string' && value.startsWith('data:image') ? 'Signed' : '—';
-    case 'file-upload':
-      return (value as { name?: string } | null)?.name ?? 'Attached file';
-    default:
-      return String(value);
-  }
-}
-
 /** Inline image for upload/signature answers; undefined → text rendering. */
 function imageDataOf(field: FieldDefinition, value: unknown): string | undefined {
   const dataUrl =
@@ -233,9 +206,4 @@ function imageDataOf(field: FieldDefinition, value: unknown): string | undefined
         ? (value as { dataUrl?: unknown }).dataUrl
         : undefined;
   return typeof dataUrl === 'string' && dataUrl.startsWith('data:image') ? dataUrl : undefined;
-}
-
-export function labelFor(field: FieldDefinition, rawValue: unknown): string {
-  const option = (field.options ?? []).find((o: FieldOption) => o.value === rawValue);
-  return option?.label ?? String(rawValue);
 }

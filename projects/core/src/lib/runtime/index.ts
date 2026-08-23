@@ -4,6 +4,7 @@ export * from "./fields/field-shell";
 export * from "./fields/text-fields";
 export * from "./fields/br-fields";
 export * from "./fields/file-fields";
+export * from "./format-values";
 export * from "./fields/number-fields";
 export * from "./fields/selection-fields";
 export * from "./fields/field-host";
