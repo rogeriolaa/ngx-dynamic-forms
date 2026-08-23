@@ -32,6 +32,27 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .preview { display: flex; flex-direction: column; gap: 1rem; }
+    .trace {
+      border: 1px solid var(--ndf-border);
+      border-radius: 8px;
+      padding: 0.625rem 0.75rem;
+      font-size: 0.75rem;
+    }
+    .trace-title {
+      margin: 0 0 0.375rem;
+      font-size: 0.6875rem; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      color: var(--ndf-text-muted);
+    }
+    .trace-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.125rem 0; color: var(--ndf-text); }
+    .trace-id { font-family: ui-monospace, monospace; }
+    .trace-badge {
+      border-radius: 999px; padding: 0 0.4rem; font-weight: 600;
+      background: var(--ndf-surface-alt);
+      color: var(--ndf-text-muted);
+    }
+    .trace-cond { color: var(--ndf-text-muted); font-family: ui-monospace, monospace; }
+    .trace-cond--fail { color: var(--ndf-danger); }
     .preview-banner {
       display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
       border-radius: 8px;
@@ -108,6 +129,25 @@ import {
             {{ hiddenCount() }} field(s) currently hidden by your rules.
           </div>
         }
+
+        @if (definition().dependencies.length > 0 && engineState(); as engine) {
+          <section class="trace" data-testid="rule-trace">
+            <p class="trace-title">Rule inspector</p>
+            @for (rule of engine.lastTrace(); track rule.ruleId) {
+              <div class="trace-row">
+                <ndf-icon
+                  [name]="rule.passed ? 'check' : 'x'"
+                  [style.color]="rule.passed ? 'var(--ndf-success)' : 'var(--ndf-danger)'"
+                />
+                <span class="trace-id">{{ rule.ruleId }}</span>
+                <span class="trace-badge">{{ rule.branch }}</span>
+                @for (cond of rule.conditions; track $index) {
+                  <span class="trace-cond" [class.trace-cond--fail]="!cond.ok">{{ condLabel(cond) }}</span>
+                }
+              </div>
+            }
+          </section>
+        }
       </div>
     }
   `,
@@ -115,7 +155,11 @@ import {
 export class BuilderPreview {
   readonly definition = input.required<FormDefinition>();
 
+  /** Plain field — reading the signal inside rebuild()'s effect would make
+   * the effect track itself and loop forever. */
   private engine: FormDependencyEngine | null = null;
+  /** Signal mirror for the template (rule inspector reads lastTrace()). */
+  protected readonly engineState = signal<FormDependencyEngine | null>(null);
   private staticDisabled = new Set<string>();
   private destroyRef = inject(DestroyRef);
 
@@ -128,9 +172,11 @@ export class BuilderPreview {
   });
 
   readonly hiddenCount = computed(() => {
-    if (!this.engine) return 0;
+    const engine = this.engineState();
+    if (!engine) return 0;
+    engine.settled(); // track evaluation passes so the count stays live
     return this.definition().fields.filter(
-      (f) => f.type !== 'section' && this.engine!.isHidden(f.id),
+      (f) => f.type !== 'section' && engine.isHidden(f.id),
     ).length;
   });
 
@@ -144,16 +190,21 @@ export class BuilderPreview {
     const built = buildFormGroup(def);
     this.form.set(built.group);
     this.staticDisabled = built.staticallyDisabled;
-    this.engine = new FormDependencyEngine(built.group, def.dependencies as Dependency[]);
-    this.engine.activate();
+    // trace: true powers the live "Rule inspector" panel below the form
+    const engine = new FormDependencyEngine(built.group, def.dependencies as Dependency[], {
+      trace: true,
+    });
+    engine.activate();
+    this.engine = engine;
+    this.engineState.set(engine);
   }
 
   isHidden(fieldId: string): boolean {
-    return this.engine?.isHidden(fieldId) ?? false;
+    return this.engineState()?.isHidden(fieldId) ?? false;
   }
 
   hiddenByRule(field: FieldDefinition): boolean {
-    return this.engine?.isHidden(field.id) ?? false;
+    return this.engineState()?.isHidden(field.id) ?? false;
   }
 
   columnSpan(field: FieldDefinition): number {
@@ -162,5 +213,22 @@ export class BuilderPreview {
 
   reset(): void {
     this.rebuild(this.definition());
+  }
+
+  condLabel(cond: { field: string; operator: string; expected?: unknown; actual: unknown; ok: boolean }): string {
+    const base = `${cond.field} ${cond.operator}`;
+    if (cond.ok) return base;
+    let actual = cond.actual;
+    if (actual === undefined) actual = 'undefined';
+    else if (actual === null) actual = 'null';
+    else if (actual === '') actual = "''";
+    return `${base} — expected ${JSON.stringify(cond.expected)}, got ${JSON.stringify(actual)}`;
+  }
+
+  stringify(value: unknown): string {
+    if (value === undefined) return 'undefined';
+    if (value === null) return 'null';
+    if (value === '') return "''";
+    return String(value);
   }
 }
